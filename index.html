@@ -190,16 +190,21 @@ function wirePicker(key, inputId, sugId, infoId) {
 }
 
 async function choose(key, it, input, sug, info) {
+  it.code = (it.code || "").trim().toUpperCase();
   input.value = it.code; sug.classList.add("hide");
   info.textContent = "Checking with NIPOST...";
-  const { status, body } = await api("lookup", { code: it.code, level: 1 });
+  // Try a richer level first (address details); fall back to level 1 (validity only) if the key lacks access.
+  let { status, body } = await api("lookup", { code: it.code, level: 3 });
+  if (status !== 200) ({ status, body } = await api("lookup", { code: it.code, level: 1 }));
   const d = body && body.data;
   if (status !== 200 || !d || d.valid === false) {
     info.innerHTML = `<span class="warn">Not confirmed by NIPOST${status !== 200 ? " (error " + status + ")" : ""}. Check the code.</span>`;
     sel[key] = null; refresh(); return;
   }
   const a = d.administrative_address || {};
-  info.textContent = "✓ " + [a.locality_name, a.lga_name, a.state_name].filter(Boolean).join(", ");
+  const where = [a.locality_name, a.lga_name, a.state_name].filter(Boolean).join(", ");
+  const house = d.recent_house_address && d.recent_house_address.recent;
+  info.textContent = "✓ " + (where || "Valid postcode") + (house ? " · " + house : "");
   const real = coordsFrom(d);
   sel[key] = { code: d.postcode || it.code, coords: real || fallbackCoords(it.code), approx: !real };
   refresh();
