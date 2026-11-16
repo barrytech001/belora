@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Belora</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root { --g:#0b6b3a; --g2:#e8f4ec; --ink:#14201a; --mut:#5d6b63; --bd:#d8e2db; --warn:#b45309; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color:var(--ink); background:#f6f9f7; }
+  header { background:var(--g); color:#fff; padding:12px 16px; display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  header h1 { margin:0; font-size:20px; }
+  header span { font-size:13px; opacity:.85; }
+  nav { display:flex; background:#fff; border-bottom:1px solid var(--bd); position:sticky; top:0; z-index:5; }
+  nav button { flex:1; padding:12px; border:0; background:none; font-size:15px; cursor:pointer; border-bottom:3px solid transparent; color:var(--mut); }
+  nav button.on { color:var(--g); border-color:var(--g); font-weight:600; }
+  main { max-width:980px; margin:0 auto; padding:14px; }
+  .card { background:#fff; border:1px solid var(--bd); border-radius:10px; padding:14px; margin-bottom:14px; }
+  label { display:block; font-size:13px; color:var(--mut); margin:10px 0 4px; }
+  input, textarea { width:100%; padding:10px; border:1px solid var(--bd); border-radius:8px; font-size:15px; font-family:inherit; }
+  button.pri { background:var(--g); color:#fff; border:0; border-radius:8px; padding:11px 16px; font-size:15px; cursor:pointer; }
+  button.sec { background:var(--g2); color:var(--g); border:0; border-radius:8px; padding:8px 12px; font-size:14px; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  .row > * { flex:1; min-width:220px; }
+  .sug { border:1px solid var(--bd); border-radius:8px; margin-top:4px; max-height:200px; overflow:auto; background:#fff; }
+  .sug div { padding:9px 10px; cursor:pointer; font-size:14px; border-bottom:1px solid #eef2ef; }
+  .sug div:hover { background:var(--g2); }
+  .chip { display:inline-block; background:var(--g2); color:var(--g); border-radius:999px; padding:3px 10px; font-size:13px; margin:2px 4px 2px 0; }
+  .warn { color:var(--warn); font-size:13px; margin-top:6px; }
+  .mut { color:var(--mut); font-size:13px; }
+  #map, #map2 { height:340px; border-radius:10px; border:1px solid var(--bd); margin-top:10px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  td, th { text-align:left; padding:8px 6px; border-bottom:1px solid #eef2ef; }
+  .st { font-size:12px; padding:2px 8px; border-radius:999px; background:#eef2ef; }
+  .st.assigned { background:#fff3d6; } .st.delivered { background:#d9f2e2; }
+  .fee { font-size:22px; font-weight:700; color:var(--g); }
+  .hide { display:none; }
+</style>
+</head>
+<body>
+<header><h1>Belora</h1><span>Dispatch built on Nigeria's postcode</span></header>
+<nav>
+  <button data-t="order" class="on">Order</button>
+  <button data-t="dispatch">Dispatch</button>
+  <button data-t="track">Track</button>
+</nav>
+<main>
+
+<!-- ORDER -->
+<section id="t-order">
+  <div class="card">
+    <b>Not sure of the postcode?</b>
+    <div class="mut">Describe the place in your own words. Belora suggests real postcodes from NIPOST.</div>
+    <textarea id="free" rows="2" placeholder="e.g. near the National Mosque, Abuja"></textarea>
+    <div style="margin-top:8px"><button class="sec" id="resolveBtn">Find postcode</button></div>
+    <div id="resolveOut"></div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>Pickup postcode</label>
+        <input id="pickup" placeholder="Type e.g. FC01" autocomplete="off">
+        <div id="sug-pickup" class="sug hide"></div>
+        <div id="info-pickup" class="mut"></div>
+      </div>
+      <div>
+        <label>Drop-off postcode</label>
+        <input id="drop" placeholder="Type e.g. FC01" autocomplete="off">
+        <div id="sug-drop" class="sug hide"></div>
+        <div id="info-drop" class="mut"></div>
+      </div>
+    </div>
+    <div class="row">
+      <div><label>Your name</label><input id="cname" placeholder="Name"></div>
+      <div><label>Phone</label><input id="cphone" placeholder="080..."></div>
+    </div>
+    <div id="map"></div>
+    <div style="margin-top:12px" class="row">
+      <div><div class="mut">Distance</div><div id="dist" class="fee">-</div></div>
+      <div><div class="mut">Delivery fee</div><div id="fee" class="fee">-</div></div>
+      <div style="text-align:right"><button class="pri" id="placeBtn" disabled>Place order</button></div>
+    </div>
+    <div id="mapNote" class="warn"></div>
+  </div>
+</section>
+
+<!-- DISPATCH -->
+<section id="t-dispatch" class="hide">
+  <div class="card"><b>Orders</b><div id="orders" style="margin-top:8px"></div></div>
+  <div class="card"><b>Riders</b><div id="riders" class="mut" style="margin-top:8px"></div><div id="map2"></div></div>
+</section>
+
+<!-- TRACK -->
+<section id="t-track" class="hide">
+  <div class="card"><b>Track an order</b><div id="trackBox" style="margin-top:8px"></div></div>
+</section>
+
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ---------- helpers ----------
+const $ = (id) => document.getElementById(id);
+const ABUJA = [9.0765, 7.3986];
+const RIDERS = [
+  { id: "r1", name: "Musa",  lat: 9.0765, lng: 7.3986 },
+  { id: "r2", name: "Chika", lat: 9.0579, lng: 7.4951 },
+  { id: "r3", name: "Tunde", lat: 9.0300, lng: 7.4700 },
+];
+const FEE_BASE = 500, FEE_PER_KM = 150;
+
+const store = {
+  get orders() { try { return JSON.parse(localStorage.getItem("belora_orders") || "[]"); } catch { return []; } },
+  set orders(v) { try { localStorage.setItem("belora_orders", JSON.stringify(v)); } catch {} },
+};
+
+function haversine(a, b) {
+  const R = 6371, rad = (x) => x * Math.PI / 180;
+  const dLat = rad(b[0]-a[0]), dLng = rad(b[1]-a[1]);
+  const h = Math.sin(dLat/2)**2 + Math.cos(rad(a[0]))*Math.cos(rad(b[0]))*Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+const naira = (n) => "₦" + Number(n).toLocaleString();
+const norm = (c) => (c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+// The API's exact response shapes weren't confirmed, so these read defensively.
+function listFrom(body) {
+  const d = body && body.data;
+  const arr = Array.isArray(d) ? d : (d && (d.results || d.suggestions)) || [];
+  return arr.map((x) => typeof x === "string"
+    ? { code: x, label: x }
+    : { code: x.postcode || x.code, label: [x.postcode || x.code, x.display || x.name || x.address].filter(Boolean).join(" · ") }
+  ).filter((x) => x.code);
+}
+function coordsFrom(data) {
+  if (!data) return null;
+  const c = data.location || data.coordinates || data;
+  const lat = c.lat ?? c.latitude, lng = c.lng ?? c.lon ?? c.longitude;
+  return (typeof lat === "number" && typeof lng === "number") ? [lat, lng] : null;
+}
+function fallbackCoords(code) { // deterministic spread around Abuja when the API gives no coordinates
+  let h = 0; for (const ch of norm(code)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return [ABUJA[0] + ((h % 1000) / 1000 - .5) * 0.12, ABUJA[1] + (((h >> 10) % 1000) / 1000 - .5) * 0.12];
+}
+
+async function api(op, params) {
+  const qs = new URLSearchParams({ op, ...params });
+  const r = await fetch("/api/pc?" + qs);
+  return { status: r.status, body: await r.json().catch(() => ({})) };
+}
+
+// ---------- tabs ----------
+document.querySelectorAll("nav button").forEach((b) => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach((x) => x.classList.toggle("on", x === b));
+  ["order","dispatch","track"].forEach((t) => $("t-" + t).classList.toggle("hide", t !== b.dataset.t));
+  if (b.dataset.t === "dispatch") { renderDispatch(); setTimeout(() => map2.invalidateSize(), 50); }
+  if (b.dataset.t === "track") renderTrack();
+  if (b.dataset.t === "order") setTimeout(() => map.invalidateSize(), 50);
+});
+
+// ---------- maps ----------
+const mk = (el) => { const m = L.map(el).setView(ABUJA, 11); L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap" }).addTo(m); return m; };
+const map = mk("map"), map2 = mk("map2");
+const pins = {}; let line = null;
+
+// ---------- postcode pickers ----------
+const sel = { pickup: null, drop: null };
+
+function wirePicker(key, inputId, sugId, infoId) {
+  const input = $(inputId), sug = $(sugId); let timer;
+  input.addEventListener("input", () => {
+    sel[key] = null; refresh();
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (q.length < 2) { sug.classList.add("hide"); return; }
+    timer = setTimeout(async () => {
+      const { status, body } = await api("autocomplete", { q });
+      if (status !== 200) { sug.innerHTML = `<div>Error ${status}: ${(body.error && (body.error.message || body.error)) || "request failed"}</div>`; sug.classList.remove("hide"); return; }
+      const items = listFrom(body);
+      sug.innerHTML = items.length ? "" : "<div>No matches. Try the sandbox codes, e.g. FC-01-A01-KP-27</div>";
+      items.forEach((it) => { const d = document.createElement("div"); d.textContent = it.label; d.onclick = () => choose(key, it, input, sug, $(infoId)); sug.appendChild(d); });
+      sug.classList.remove("hide");
+    }, 250);
+  });
+  // allow pasting/typing a full code and pressing Enter
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") choose(key, { code: input.value.trim(), label: input.value.trim() }, input, sug, $(infoId)); });
+}
+
+async function choose(key, it, input, sug, info) {
+  input.value = it.code; sug.classList.add("hide");
+  info.textContent = "Checking with NIPOST...";
+  const { status, body } = await api("lookup", { code: it.code, level: 1 });
+  const d = body && body.data;
+  if (status !== 200 || !d || d.valid === false) {
+    info.innerHTML = `<span class="warn">Not confirmed by NIPOST${status !== 200 ? " (error " + status + ")" : ""}. Check the code.</span>`;
+    sel[key] = null; refresh(); return;
+  }
+  const a = d.administrative_address || {};
+  info.textContent = "✓ " + [a.locality_name, a.lga_name, a.state_name].filter(Boolean).join(", ");
+  const real = coordsFrom(d);
+  sel[key] = { code: d.postcode || it.code, coords: real || fallbackCoords(it.code), approx: !real };
+  refresh();
+}
+
+wirePicker("pickup", "pickup", "sug-pickup", "info-pickup");
+wirePicker("drop", "drop", "sug-drop", "info-drop");
+
+let km = null, fee = null;
+function refresh() {
+  [["pickup", "P"], ["drop", "D"]].forEach(([k, label]) => {
+    if (pins[k]) { map.removeLayer(pins[k]); pins[k] = null; }
+    if (sel[k]) pins[k] = L.marker(sel[k].coords).addTo(map).bindPopup(label + ": " + sel[k].code);
+  });
+  if (line) { map.removeLayer(line); line = null; }
+  km = fee = null;
+  $("mapNote").textContent = "";
+  if (sel.pickup && sel.drop) {
+    km = haversine(sel.pickup.coords, sel.drop.coords);
+    fee = Math.round((FEE_BASE + FEE_PER_KM * km) / 50) * 50;
+    line = L.polyline([sel.pickup.coords, sel.drop.coords], { color: "#0b6b3a" }).addTo(map);
+    map.fitBounds(line.getBounds(), { padding: [30, 30] });
+    if (sel.pickup.approx || sel.drop.approx) $("mapNote").textContent = "Demo note: the sandbox did not return coordinates, so pin positions are approximate. Distance is straight-line.";
+  } else if (sel.pickup || sel.drop) {
+    map.setView((sel.pickup || sel.drop).coords, 13);
+  }
+  $("dist").textContent = km == null ? "-" : km.toFixed(1) + " km";
+  $("fee").textContent = fee == null ? "-" : naira(fee);
+  $("placeBtn").disabled = !(sel.pickup && sel.drop);
+}
+
+// ---------- AI resolver ----------
+$("resolveBtn").onclick = async () => {
+  const text = $("free").value.trim(); if (!text) return;
+  const out = $("resolveOut"); out.innerHTML = '<div class="mut" style="margin-top:8px">Searching...</div>';
+  try {
+    const r = await fetch("/api/resolve?text=" + encodeURIComponent(text));
+    const b = await r.json();
+    if (!r.ok) { out.innerHTML = `<div class="warn">${b.error || "Failed"}</div>`; return; }
+    let html = `<div class="mut" style="margin-top:8px">Searched for: ${b.keywords.map((k) => `<span class="chip">${k}</span>`).join("")}${b.usedAI ? "" : " (AI off, used your raw text)"}</div>`;
+    html += b.candidates.length ? "" : '<div class="warn">No postcodes found. The test key only covers a few public places in Abuja.</div>';
+    out.innerHTML = html;
+    b.candidates.forEach((c) => {
+      const d = document.createElement("div"); d.className = "sug"; d.style.cursor = "pointer";
+      const label = typeof c.raw === "string" ? c.raw : [c.code, c.raw.display || c.raw.name || c.raw.address].filter(Boolean).join(" · ");
+      d.innerHTML = `<div>${label} <button class="sec" style="float:right;margin-top:-4px" data-k="pickup">Use as pickup</button> <button class="sec" style="float:right;margin:-4px 6px 0 0" data-k="drop">Use as drop-off</button></div>`;
+      d.querySelectorAll("button").forEach((btn) => btn.onclick = () => {
+        const key = btn.dataset.k, input = key === "pickup" ? $("pickup") : $("drop");
+        choose(key, { code: c.code, label }, input, $("sug-" + key), $("info-" + key));
+      });
+      out.appendChild(d);
+    });
+    out.insertAdjacentHTML("beforeend", '<div class="mut" style="margin-top:6px">These are real NIPOST results. Please confirm the one that is yours.</div>');
+  } catch (e) { out.innerHTML = '<div class="warn">Could not reach the resolver.</div>'; }
+};
+
+// ---------- orders ----------
+$("placeBtn").onclick = () => {
+  const o = {
+    id: "BL-" + Math.random().toString(36).slice(2, 7).toUpperCase(),
+    created: Date.now(),
+    name: $("cname").value.trim() || "Customer", phone: $("cphone").value.trim(),
+    pickup: sel.pickup, drop: sel.drop, km, fee, status: "new", rider: null,
+    // Paystack: add checkout here. Left unpaid in the prototype.
+    paid: false,
+  };
+  store.orders = [o, ...store.orders];
+  $("trackBox").dataset.last = o.id;
+  alert("Order " + o.id + " placed. Open Dispatch to assign a rider, or Track to follow it.");
+};
+
+function nearestRider(o) {
+  return RIDERS.map((r) => ({ ...r, d: haversine([r.lat, r.lng], o.pickup.coords) })).sort((a, b) => a.d - b.d)[0];
+}
+function setStatus(id, status, rider) {
+  store.orders = store.orders.map((o) => o.id === id ? { ...o, status, rider: rider || o.rider } : o);
+  renderDispatch(); renderTrack();
+}
+window.assign = (id) => { const o = store.orders.find((x) => x.id === id); const r = nearestRider(o); setStatus(id, "assigned", { name: r.name, km: r.d }); };
+window.advance = (id, s) => setStatus(id, s);
+
+let riderLayer = L.layerGroup().addTo(map2), orderLayer = L.layerGroup().addTo(map2);
+function renderDispatch() {
+  const os = store.orders;
+  $("orders").innerHTML = os.length ? `<table><tr><th>ID</th><th>Route</th><th>Fee</th><th>Status</th><th></th></tr>${os.map((o) => `
+    <tr><td>${o.id}</td><td>${o.pickup.code} → ${o.drop.code}</td><td>${naira(o.fee)}</td>
+    <td><span class="st ${o.status}">${o.status}</span>${o.rider ? `<div class="mut">${o.rider.name} (${o.rider.km.toFixed(1)} km away)</div>` : ""}</td>
+    <td>${o.status === "new" ? `<button class="sec" onclick="assign('${o.id}')">Assign nearest</button>` :
+          o.status === "assigned" ? `<button class="sec" onclick="advance('${o.id}','picked_up')">Picked up</button>` :
+          o.status === "picked_up" ? `<button class="sec" onclick="advance('${o.id}','delivered')">Delivered</button>` : ""}</td></tr>`).join("")}</table>`
+    : '<span class="mut">No orders yet.</span>';
+  $("riders").textContent = "Demo riders: " + RIDERS.map((r) => r.name).join(", ") + " (seeded around Abuja)";
+  riderLayer.clearLayers(); orderLayer.clearLayers();
+  RIDERS.forEach((r) => L.circleMarker([r.lat, r.lng], { radius: 8, color: "#0b6b3a", fillOpacity: .8 }).addTo(riderLayer).bindPopup("Rider " + r.name));
+  os.filter((o) => o.status !== "delivered").forEach((o) => L.marker(o.pickup.coords).addTo(orderLayer).bindPopup(o.id + " pickup"));
+}
+
+const STEPS = ["new", "assigned", "picked_up", "delivered"];
+const STEP_LABEL = { new: "Order received", assigned: "Rider assigned", picked_up: "On the way", delivered: "Delivered" };
+function renderTrack() {
+  const os = store.orders; const box = $("trackBox");
+  if (!os.length) { box.innerHTML = '<span class="mut">Place an order first.</span>'; return; }
+  box.innerHTML = os.slice(0, 5).map((o) => {
+    const i = STEPS.indexOf(o.status);
+    return `<div style="margin-bottom:14px"><b>${o.id}</b> <span class="mut">${o.pickup.code} → ${o.drop.code} · ${naira(o.fee)}</span><div style="margin-top:6px">${STEPS.map((s, j) => `<span class="chip" style="${j <= i ? "" : "opacity:.35"}">${STEP_LABEL[s]}</span>`).join("")}</div>${o.rider ? `<div class="mut">Rider: ${o.rider.name}</div>` : ""}</div>`;
+  }).join("");
+}
+renderDispatch(); renderTrack();
+</script>
+</body>
+</html>
