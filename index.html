@@ -4,100 +4,225 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Belora</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Instrument+Sans:wght@400..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-  :root { --g:#0b6b3a; --g2:#e8f4ec; --ink:#14201a; --mut:#5d6b63; --bd:#d8e2db; --warn:#b45309; }
+  :root {
+    --green: #0b5d3b;
+    --green-soft: #e3f1e9;
+    --ink: #0e1a14;
+    --muted: #5b6b62;
+    --mist: #f1f5f2;
+    --line: #dde6e0;
+    --warn: #b45309;
+    --warn-soft: #fdf0dc;
+    --paper: #ffffff;
+    --display: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
+    --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
   * { box-sizing: border-box; }
-  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color:var(--ink); background:#f6f9f7; }
-  header { background:var(--g); color:#fff; padding:12px 16px; display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
-  header h1 { margin:0; font-size:20px; }
-  header span { font-size:13px; opacity:.85; }
-  nav { display:flex; background:#fff; border-bottom:1px solid var(--bd); position:sticky; top:0; z-index:5; }
-  nav button { flex:1; padding:12px; border:0; background:none; font-size:15px; cursor:pointer; border-bottom:3px solid transparent; color:var(--mut); }
-  nav button.on { color:var(--g); border-color:var(--g); font-weight:600; }
-  main { max-width:980px; margin:0 auto; padding:14px; }
-  .card { background:#fff; border:1px solid var(--bd); border-radius:10px; padding:14px; margin-bottom:14px; }
-  label { display:block; font-size:13px; color:var(--mut); margin:10px 0 4px; }
-  input, textarea { width:100%; padding:10px; border:1px solid var(--bd); border-radius:8px; font-size:15px; font-family:inherit; }
-  button.pri { background:var(--g); color:#fff; border:0; border-radius:8px; padding:11px 16px; font-size:15px; cursor:pointer; }
-  button.sec { background:var(--g2); color:var(--g); border:0; border-radius:8px; padding:8px 12px; font-size:14px; cursor:pointer; }
-  button:disabled { opacity:.5; cursor:not-allowed; }
-  .row { display:flex; gap:10px; flex-wrap:wrap; }
-  .row > * { flex:1; min-width:220px; }
-  .sug { border:1px solid var(--bd); border-radius:8px; margin-top:4px; max-height:200px; overflow:auto; background:#fff; }
-  .sug div { padding:9px 10px; cursor:pointer; font-size:14px; border-bottom:1px solid #eef2ef; }
-  .sug div:hover { background:var(--g2); }
-  .chip { display:inline-block; background:var(--g2); color:var(--g); border-radius:999px; padding:3px 10px; font-size:13px; margin:2px 4px 2px 0; }
-  .warn { color:var(--warn); font-size:13px; margin-top:6px; }
-  .mut { color:var(--mut); font-size:13px; }
-  #map, #map2 { height:340px; border-radius:10px; border:1px solid var(--bd); margin-top:10px; }
-  table { width:100%; border-collapse:collapse; font-size:14px; }
-  td, th { text-align:left; padding:8px 6px; border-bottom:1px solid #eef2ef; }
-  .st { font-size:12px; padding:2px 8px; border-radius:999px; background:#eef2ef; }
-  .st.assigned { background:#fff3d6; } .st.delivered { background:#d9f2e2; }
-  .fee { font-size:22px; font-weight:700; color:var(--g); }
-  .hide { display:none; }
+  html, body { height: 100%; }
+  body { margin: 0; display: flex; flex-direction: column; font: 16px/1.45 var(--body); color: var(--ink); background: var(--mist); }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
+  .hide { display: none !important; }
+
+  /* top bar */
+  .top { flex: none; height: 56px; display: flex; align-items: center; gap: 18px; padding: 0 16px; background: var(--paper); border-bottom: 1px solid var(--line); z-index: 1300; position: relative; }
+  .brand { font-family: var(--display); font-weight: 800; font-size: 24px; letter-spacing: -0.02em; color: var(--green); display: flex; align-items: center; gap: 8px; }
+  .brand i { width: 12px; height: 12px; border-radius: 50%; background: var(--green); display: inline-block; box-shadow: 0 0 0 4px var(--green-soft); }
+  .tabs { display: flex; gap: 4px; margin-left: auto; }
+  .tabs button { border: 0; background: none; padding: 8px 14px; border-radius: 999px; color: var(--muted); font-weight: 600; }
+  .tabs button.on { background: var(--green); color: #fff; }
+  .powered { font-size: 13px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
+  @media (max-width: 700px) { .powered { display: none; } }
+
+  main { flex: 1; min-height: 0; position: relative; }
+  .view { position: absolute; inset: 0; }
+
+  /* order: map + floating sheet */
+  #map { position: absolute; inset: 0; }
+  .sheet { position: absolute; z-index: 1200; background: var(--paper); display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(14, 26, 20, .18); }
+  .sheet-body { overflow: auto; padding: 20px 20px 8px; flex: 1; }
+  @media (min-width: 820px) { .sheet { left: 16px; top: 16px; bottom: 16px; width: 430px; border-radius: 20px; } }
+  @media (max-width: 819px) { .sheet { left: 0; right: 0; bottom: 0; max-height: 68%; border-radius: 20px 20px 0 0; } }
+
+  h1 { font-family: var(--display); font-weight: 800; font-size: 30px; line-height: 1.05; letter-spacing: -0.025em; margin: 0 0 6px; }
+  .lede { margin: 0 0 18px; color: var(--muted); }
+
+  .route { position: relative; padding-left: 30px; }
+  .route::before { content: ""; position: absolute; left: 9px; top: 26px; bottom: 26px; border-left: 2px dashed #b9c9bf; }
+  .stop { position: relative; margin-bottom: 14px; }
+  .stop::before { content: ""; position: absolute; left: -29px; top: 14px; width: 14px; height: 14px; background: var(--green); border-radius: 50%; box-shadow: 0 0 0 4px var(--green-soft); }
+  .stop.drop::before { background: var(--ink); border-radius: 3px; box-shadow: 0 0 0 4px #e2e6e3; }
+  .field { position: relative; }
+  .stop input { width: 100%; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--mist); font-size: 17px; font-weight: 600; letter-spacing: .02em; }
+  .stop input::placeholder { font-weight: 400; letter-spacing: 0; color: #8a9a91; }
+  .stop input:focus { border-color: var(--green); background: #fff; outline: none; }
+  .sug { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 10; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(14, 26, 20, .15); max-height: 220px; overflow: auto; }
+  .sug div { padding: 11px 14px; cursor: pointer; border-bottom: 1px solid var(--mist); font-size: 15px; }
+  .sug div:last-child { border-bottom: 0; }
+  .sug div:hover { background: var(--green-soft); }
+  .sug .empty { color: var(--muted); cursor: default; }
+  .sug .empty:hover { background: #fff; }
+
+  .info { margin-top: 8px; font-size: 14px; color: var(--muted); }
+  .info .where { margin-top: 6px; color: var(--ink); font-weight: 600; }
+  .info .warn { color: var(--warn); background: var(--warn-soft); border-radius: 10px; padding: 8px 12px; }
+  .code { display: flex; gap: 6px; }
+  .seg { flex: 1; min-width: 0; text-align: center; padding: 7px 4px 5px; border-radius: 10px; background: var(--green-soft); color: var(--green); font-family: var(--display); font-weight: 800; font-size: 20px; letter-spacing: .03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .seg:first-child { background: var(--green); color: #fff; }
+  .seg small { display: block; margin-top: 2px; font-family: var(--body); font-weight: 500; font-size: 11px; letter-spacing: 0; opacity: .85; }
+
+  .details { margin: 4px 0 14px; }
+  .details summary { cursor: pointer; color: var(--green); font-weight: 600; padding: 6px 0; }
+  .details textarea { width: 100%; margin-top: 8px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--mist); resize: vertical; }
+  .btn { border: 0; border-radius: 12px; padding: 11px 16px; font-weight: 700; }
+  .btn.primary { background: var(--green); color: #fff; }
+  .btn.soft { background: var(--green-soft); color: var(--green); }
+  .btn.small { padding: 7px 12px; font-size: 14px; border-radius: 10px; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .chip { display: inline-block; background: var(--green-soft); color: var(--green); border-radius: 999px; padding: 3px 10px; font-size: 13px; font-weight: 600; margin: 2px 4px 2px 0; }
+  .cand { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; margin-top: 8px; font-size: 14px; }
+  .cand b { font-family: var(--display); }
+  .cand .acts { display: flex; gap: 6px; flex: none; }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 8px; }
+
+  .contact { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 6px; }
+  .contact input { width: 100%; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--mist); }
+  .contact input:focus { border-color: var(--green); background: #fff; outline: none; }
+  .demo { margin: 10px 0 14px; font-size: 13px; color: var(--muted); }
+  .demo button { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 4px 10px; margin: 4px 6px 0 0; font-size: 13px; }
+  .demo button:hover { background: var(--green-soft); }
+  .note { font-size: 13px; color: var(--warn); margin: 6px 0 10px; }
+
+  .bar { flex: none; display: flex; align-items: center; gap: 16px; padding: 12px 20px 16px; border-top: 1px solid var(--line); background: #fff; }
+  .stat small { display: block; font-size: 12px; color: var(--muted); }
+  .stat b { font-family: var(--display); font-weight: 800; font-size: 24px; letter-spacing: -0.02em; }
+  .bar .btn { margin-left: auto; padding: 13px 20px; font-size: 16px; }
+
+  .pin { width: 18px; height: 18px; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
+  .pin.p { background: var(--green); border-radius: 50%; }
+  .pin.d { background: var(--ink); border-radius: 4px; }
+
+  /* dispatch */
+  #t-dispatch { display: grid; grid-template-columns: 440px 1fr; }
+  .board { overflow: auto; padding: 18px; background: var(--mist); }
+  .board h2, .trackwrap h2 { font-family: var(--display); font-weight: 800; font-size: 24px; letter-spacing: -0.02em; margin: 0 0 12px; }
+  #map2 { height: 100%; }
+  @media (max-width: 819px) { #t-dispatch { grid-template-columns: 1fr; grid-template-rows: 260px 1fr; } #map2 { grid-row: 1; } .board { grid-row: 2; } }
+  .ocard { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
+  .ohead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .ohead b { font-family: var(--display); font-size: 18px; }
+  .st { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--mist); color: var(--muted); }
+  .st.assigned { background: var(--warn-soft); color: var(--warn); }
+  .st.picked_up { background: #e2eefb; color: #1d4f91; }
+  .st.delivered { background: var(--green-soft); color: var(--green); }
+  .route-line { margin: 8px 0; font-size: 14px; font-weight: 600; word-break: break-word; }
+  .meta { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+  .riders { font-size: 14px; color: var(--muted); margin-bottom: 14px; }
+  .empty-state { color: var(--muted); padding: 24px 8px; text-align: center; }
+
+  /* track */
+  .trackwrap { height: 100%; overflow: auto; padding: 22px 16px; }
+  .trackin { max-width: 560px; margin: 0 auto; }
+  .tcard { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+  .steps { list-style: none; margin: 14px 0 4px; padding: 0 0 0 6px; }
+  .steps li { position: relative; padding: 0 0 14px 26px; color: #8a9a91; font-weight: 600; }
+  .steps li::before { content: ""; position: absolute; left: 0; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid #c8d4cc; }
+  .steps li::after { content: ""; position: absolute; left: 6px; top: 20px; bottom: -3px; border-left: 2px solid #dfe7e2; }
+  .steps li:last-child::after { display: none; }
+  .steps li.done { color: var(--ink); }
+  .steps li.done::before { background: var(--green); border-color: var(--green); }
+  .steps li.done::after { border-color: var(--green); }
+
+  .leaflet-container { font-family: var(--body); }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
 </style>
 </head>
 <body>
-<header><h1>Belora</h1><span>Dispatch built on Nigeria's postcode</span></header>
-<nav>
-  <button data-t="order" class="on">Order</button>
-  <button data-t="dispatch">Dispatch</button>
-  <button data-t="track">Track</button>
-</nav>
+
+<header class="top">
+  <div class="brand"><i></i>Belora</div>
+  <nav class="tabs" aria-label="Sections">
+    <button data-t="order" class="on">Order</button>
+    <button data-t="dispatch">Dispatch</button>
+    <button data-t="track">Track</button>
+  </nav>
+  <span class="powered">Powered by the NIPOST postcode</span>
+</header>
+
 <main>
+  <!-- ORDER -->
+  <section id="t-order" class="view">
+    <div id="map" aria-label="Map"></div>
+    <div class="sheet">
+      <div class="sheet-body">
+        <h1>Every address, one code.</h1>
+        <p class="lede">Enter a postcode. Belora confirms the building, prices the trip and finds the nearest rider.</p>
 
-<!-- ORDER -->
-<section id="t-order">
-  <div class="card">
-    <b>Not sure of the postcode?</b>
-    <div class="mut">Describe the place in your own words. Belora suggests real postcodes from NIPOST.</div>
-    <textarea id="free" rows="2" placeholder="e.g. near the National Mosque, Abuja"></textarea>
-    <div style="margin-top:8px"><button class="sec" id="resolveBtn">Find postcode</button></div>
-    <div id="resolveOut"></div>
-  </div>
+        <div class="route">
+          <div class="stop pickup">
+            <div class="field">
+              <input id="pickup" placeholder="Pickup postcode" autocomplete="off" aria-label="Pickup postcode">
+              <div id="sug-pickup" class="sug hide"></div>
+            </div>
+            <div id="info-pickup" class="info"></div>
+          </div>
+          <div class="stop drop">
+            <div class="field">
+              <input id="drop" placeholder="Drop-off postcode" autocomplete="off" aria-label="Drop-off postcode">
+              <div id="sug-drop" class="sug hide"></div>
+            </div>
+            <div id="info-drop" class="info"></div>
+          </div>
+        </div>
 
-  <div class="card">
-    <div class="row">
-      <div>
-        <label>Pickup postcode</label>
-        <input id="pickup" placeholder="Type e.g. FC01" autocomplete="off">
-        <div id="sug-pickup" class="sug hide"></div>
-        <div id="info-pickup" class="mut"></div>
+        <details class="details">
+          <summary>Don't know the code? Describe the place</summary>
+          <textarea id="free" rows="2" placeholder="For example: near the National Mosque, Abuja"></textarea>
+          <div style="margin-top:8px"><button class="btn soft small" id="resolveBtn">Find postcode</button></div>
+          <div id="resolveOut"></div>
+        </details>
+
+        <div class="contact">
+          <input id="cname" placeholder="Your name" aria-label="Your name">
+          <input id="cphone" placeholder="Phone number" aria-label="Phone number" inputmode="tel">
+        </div>
+
+        <div class="demo">Demo codes: tap to use
+          <div id="demoChips"></div>
+        </div>
+        <div id="mapNote" class="note"></div>
       </div>
-      <div>
-        <label>Drop-off postcode</label>
-        <input id="drop" placeholder="Type e.g. FC01" autocomplete="off">
-        <div id="sug-drop" class="sug hide"></div>
-        <div id="info-drop" class="mut"></div>
+      <div class="bar">
+        <div class="stat"><small>Distance</small><b id="dist">-</b></div>
+        <div class="stat"><small>Delivery fee</small><b id="fee">-</b></div>
+        <button class="btn primary" id="placeBtn" disabled>Place order</button>
       </div>
     </div>
-    <div class="row">
-      <div><label>Your name</label><input id="cname" placeholder="Name"></div>
-      <div><label>Phone</label><input id="cphone" placeholder="080..."></div>
+  </section>
+
+  <!-- DISPATCH -->
+  <section id="t-dispatch" class="view hide">
+    <div class="board">
+      <h2>Orders</h2>
+      <div id="riders" class="riders"></div>
+      <div id="orders"></div>
     </div>
-    <div id="map"></div>
-    <div style="margin-top:12px" class="row">
-      <div><div class="mut">Distance</div><div id="dist" class="fee">-</div></div>
-      <div><div class="mut">Delivery fee</div><div id="fee" class="fee">-</div></div>
-      <div style="text-align:right"><button class="pri" id="placeBtn" disabled>Place order</button></div>
-    </div>
-    <div id="mapNote" class="warn"></div>
-  </div>
-</section>
+    <div id="map2"></div>
+  </section>
 
-<!-- DISPATCH -->
-<section id="t-dispatch" class="hide">
-  <div class="card"><b>Orders</b><div id="orders" style="margin-top:8px"></div></div>
-  <div class="card"><b>Riders</b><div id="riders" class="mut" style="margin-top:8px"></div><div id="map2"></div></div>
-</section>
-
-<!-- TRACK -->
-<section id="t-track" class="hide">
-  <div class="card"><b>Track an order</b><div id="trackBox" style="margin-top:8px"></div></div>
-</section>
-
+  <!-- TRACK -->
+  <section id="t-track" class="view hide">
+    <div class="trackwrap"><div class="trackin">
+      <h2>Track an order</h2>
+      <div id="trackBox"></div>
+    </div></div>
+  </section>
 </main>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -111,6 +236,7 @@ const RIDERS = [
   { id: "r3", name: "Tunde", lat: 9.0300, lng: 7.4700 },
 ];
 const FEE_BASE = 500, FEE_PER_KM = 150;
+const DEMO_CODES = ["FC-01-A01-KP-27", "FC-01-A01-LR-01", "FC-01-A01-MH-01"];
 
 const store = {
   get orders() { try { return JSON.parse(localStorage.getItem("belora_orders") || "[]"); } catch { return []; } },
@@ -125,6 +251,16 @@ function haversine(a, b) {
 }
 const naira = (n) => "₦" + Number(n).toLocaleString();
 const norm = (c) => (c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// Postcode as a segmented plate: state, LGA, district, area, unit.
+function plate(code) {
+  const c = norm(code);
+  if (c.length !== 11) return "";
+  const parts = [c.slice(0,2), c.slice(2,4), c.slice(4,7), c.slice(7,9), c.slice(9,11)];
+  const names = ["State", "LGA", "District", "Area", "Unit"];
+  return `<div class="code">${parts.map((s, i) => `<div class="seg">${s}<small>${names[i]}</small></div>`).join("")}</div>`;
+}
 
 // The API's exact response shapes weren't confirmed, so these read defensively.
 function listFrom(body) {
@@ -152,19 +288,26 @@ async function api(op, params) {
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
 
+// ---------- maps ----------
+const mk = (el) => {
+  const m = L.map(el, { zoomControl: false }).setView(ABUJA, 11);
+  L.control.zoom({ position: "topright" }).addTo(m);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap" }).addTo(m);
+  return m;
+};
+const map = mk("map"), map2 = mk("map2");
+const pinIcon = (kind) => L.divIcon({ className: "", html: `<div class="pin ${kind}"></div>`, iconSize: [18, 18], iconAnchor: [9, 9] });
+const pins = {}; let line = null;
+const wide = () => window.innerWidth >= 820;
+
 // ---------- tabs ----------
-document.querySelectorAll("nav button").forEach((b) => b.onclick = () => {
-  document.querySelectorAll("nav button").forEach((x) => x.classList.toggle("on", x === b));
-  ["order","dispatch","track"].forEach((t) => $("t-" + t).classList.toggle("hide", t !== b.dataset.t));
+document.querySelectorAll(".tabs button").forEach((b) => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach((x) => x.classList.toggle("on", x === b));
+  ["order", "dispatch", "track"].forEach((t) => $("t-" + t).classList.toggle("hide", t !== b.dataset.t));
   if (b.dataset.t === "dispatch") { renderDispatch(); setTimeout(() => map2.invalidateSize(), 50); }
   if (b.dataset.t === "track") renderTrack();
   if (b.dataset.t === "order") setTimeout(() => map.invalidateSize(), 50);
 });
-
-// ---------- maps ----------
-const mk = (el) => { const m = L.map(el).setView(ABUJA, 11); L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap" }).addTo(m); return m; };
-const map = mk("map"), map2 = mk("map2");
-const pins = {}; let line = null;
 
 // ---------- postcode pickers ----------
 const sel = { pickup: null, drop: null };
@@ -172,20 +315,20 @@ const sel = { pickup: null, drop: null };
 function wirePicker(key, inputId, sugId, infoId) {
   const input = $(inputId), sug = $(sugId); let timer;
   input.addEventListener("input", () => {
-    sel[key] = null; refresh();
+    sel[key] = null; $(infoId).innerHTML = ""; refresh();
     clearTimeout(timer);
     const q = input.value.trim();
     if (q.length < 2) { sug.classList.add("hide"); return; }
     timer = setTimeout(async () => {
       const { status, body } = await api("autocomplete", { q });
-      if (status !== 200) { sug.innerHTML = `<div>Error ${status}: ${(body.error && (body.error.message || body.error)) || "request failed"}</div>`; sug.classList.remove("hide"); return; }
+      if (status !== 200) { sug.innerHTML = `<div class="empty">Error ${status}: ${esc((body.error && (body.error.message || body.error)) || "request failed")}</div>`; sug.classList.remove("hide"); return; }
       const items = listFrom(body);
-      sug.innerHTML = items.length ? "" : "<div>No matches. Try the sandbox codes, e.g. FC-01-A01-KP-27</div>";
+      sug.innerHTML = items.length ? "" : '<div class="empty">No suggestions. Press Enter to check the full code.</div>';
       items.forEach((it) => { const d = document.createElement("div"); d.textContent = it.label; d.onclick = () => choose(key, it, input, sug, $(infoId)); sug.appendChild(d); });
       sug.classList.remove("hide");
     }, 250);
   });
-  // allow pasting/typing a full code and pressing Enter
+  // allow typing or pasting a full code and pressing Enter
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") choose(key, { code: input.value.trim(), label: input.value.trim() }, input, sug, $(infoId)); });
 }
 
@@ -198,13 +341,14 @@ async function choose(key, it, input, sug, info) {
   if (status !== 200) ({ status, body } = await api("lookup", { code: it.code, level: 1 }));
   const d = body && body.data;
   if (status !== 200 || !d || d.valid === false) {
-    info.innerHTML = `<span class="warn">Not confirmed by NIPOST${status !== 200 ? " (error " + status + ")" : ""}. Check the code.</span>`;
+    info.innerHTML = `<div class="warn">NIPOST doesn't recognise this code${status !== 200 ? " (error " + status + ")" : ""}. Check it and try again.</div>`;
     sel[key] = null; refresh(); return;
   }
   const a = d.administrative_address || {};
   const where = [a.locality_name, a.lga_name, a.state_name].filter(Boolean).join(", ");
   const house = d.recent_house_address && d.recent_house_address.recent;
-  info.textContent = "✓ " + (where || "Valid postcode") + (house ? " · " + house : "");
+  info.innerHTML = plate(d.postcode || it.code) +
+    `<div class="where">${esc(where || "Valid postcode")}${house ? " · " + esc(house) : ""}</div>`;
   const real = coordsFrom(d);
   sel[key] = { code: d.postcode || it.code, coords: real || fallbackCoords(it.code), approx: !real };
   refresh();
@@ -213,11 +357,21 @@ async function choose(key, it, input, sug, info) {
 wirePicker("pickup", "pickup", "sug-pickup", "info-pickup");
 wirePicker("drop", "drop", "sug-drop", "info-drop");
 
+// demo chips
+DEMO_CODES.forEach((c) => {
+  const b = document.createElement("button"); b.textContent = c;
+  b.onclick = () => {
+    const key = !sel.pickup ? "pickup" : "drop";
+    choose(key, { code: c }, $(key), $("sug-" + key), $("info-" + key));
+  };
+  $("demoChips").appendChild(b);
+});
+
 let km = null, fee = null;
 function refresh() {
-  [["pickup", "P"], ["drop", "D"]].forEach(([k, label]) => {
+  [["pickup", "p"], ["drop", "d"]].forEach(([k, cls]) => {
     if (pins[k]) { map.removeLayer(pins[k]); pins[k] = null; }
-    if (sel[k]) pins[k] = L.marker(sel[k].coords).addTo(map).bindPopup(label + ": " + sel[k].code);
+    if (sel[k]) pins[k] = L.marker(sel[k].coords, { icon: pinIcon(cls) }).addTo(map).bindPopup((k === "pickup" ? "Pickup: " : "Drop-off: ") + sel[k].code);
   });
   if (line) { map.removeLayer(line); line = null; }
   km = fee = null;
@@ -225,9 +379,12 @@ function refresh() {
   if (sel.pickup && sel.drop) {
     km = haversine(sel.pickup.coords, sel.drop.coords);
     fee = Math.round((FEE_BASE + FEE_PER_KM * km) / 50) * 50;
-    line = L.polyline([sel.pickup.coords, sel.drop.coords], { color: "#0b6b3a" }).addTo(map);
-    map.fitBounds(line.getBounds(), { padding: [30, 30] });
-    if (sel.pickup.approx || sel.drop.approx) $("mapNote").textContent = "Demo note: the sandbox did not return coordinates, so pin positions are approximate. Distance is straight-line.";
+    line = L.polyline([sel.pickup.coords, sel.drop.coords], { color: "#0b5d3b", weight: 4 }).addTo(map);
+    map.fitBounds(line.getBounds(), {
+      paddingTopLeft: [wide() ? 460 : 30, 60],
+      paddingBottomRight: [30, wide() ? 60 : Math.round(window.innerHeight * 0.5)],
+    });
+    if (sel.pickup.approx || sel.drop.approx) $("mapNote").textContent = "Demo note: the test data has no coordinates, so pins are approximate and distance is in a straight line.";
   } else if (sel.pickup || sel.drop) {
     map.setView((sel.pickup || sel.drop).coords, 13);
   }
@@ -239,26 +396,25 @@ function refresh() {
 // ---------- AI resolver ----------
 $("resolveBtn").onclick = async () => {
   const text = $("free").value.trim(); if (!text) return;
-  const out = $("resolveOut"); out.innerHTML = '<div class="mut" style="margin-top:8px">Searching...</div>';
+  const out = $("resolveOut"); out.innerHTML = '<div class="hint">Searching...</div>';
   try {
     const r = await fetch("/api/resolve?text=" + encodeURIComponent(text));
     const b = await r.json();
-    if (!r.ok) { out.innerHTML = `<div class="warn">${b.error || "Failed"}</div>`; return; }
-    let html = `<div class="mut" style="margin-top:8px">Searched for: ${b.keywords.map((k) => `<span class="chip">${k}</span>`).join("")}${b.usedAI ? "" : " (AI off, used your raw text)"}</div>`;
-    html += b.candidates.length ? "" : '<div class="warn">No postcodes found. The test key only covers a few public places in Abuja.</div>';
-    out.innerHTML = html;
+    if (!r.ok) { out.innerHTML = `<div class="info"><div class="warn">${esc(b.error || "Search failed. Try again.")}</div></div>`; return; }
+    out.innerHTML = `<div class="hint">Searched for ${b.keywords.map((k) => `<span class="chip">${esc(k)}</span>`).join("")}${b.usedAI ? "" : "(AI is off, so your own words were used)"}</div>` +
+      (b.candidates.length ? "" : '<div class="info"><div class="warn">No postcodes found. The test key only covers a few public places in Abuja.</div></div>');
     b.candidates.forEach((c) => {
-      const d = document.createElement("div"); d.className = "sug"; d.style.cursor = "pointer";
       const label = typeof c.raw === "string" ? c.raw : [c.code, c.raw.display || c.raw.name || c.raw.address].filter(Boolean).join(" · ");
-      d.innerHTML = `<div>${label} <button class="sec" style="float:right;margin-top:-4px" data-k="pickup">Use as pickup</button> <button class="sec" style="float:right;margin:-4px 6px 0 0" data-k="drop">Use as drop-off</button></div>`;
+      const d = document.createElement("div"); d.className = "cand";
+      d.innerHTML = `<span><b>${esc(c.code)}</b>${label !== c.code ? "<br>" + esc(label.replace(c.code + " · ", "")) : ""}</span><span class="acts"><button class="btn soft small" data-k="pickup">Pickup</button><button class="btn soft small" data-k="drop">Drop-off</button></span>`;
       d.querySelectorAll("button").forEach((btn) => btn.onclick = () => {
-        const key = btn.dataset.k, input = key === "pickup" ? $("pickup") : $("drop");
-        choose(key, { code: c.code, label }, input, $("sug-" + key), $("info-" + key));
+        const key = btn.dataset.k;
+        choose(key, { code: c.code }, $(key), $("sug-" + key), $("info-" + key));
       });
       out.appendChild(d);
     });
-    out.insertAdjacentHTML("beforeend", '<div class="mut" style="margin-top:6px">These are real NIPOST results. Please confirm the one that is yours.</div>');
-  } catch (e) { out.innerHTML = '<div class="warn">Could not reach the resolver.</div>'; }
+    if (b.candidates.length) out.insertAdjacentHTML("beforeend", '<div class="hint">These are real NIPOST results. Confirm the one that is yours.</div>');
+  } catch (e) { out.innerHTML = '<div class="info"><div class="warn">Could not reach the search. Check your connection.</div></div>'; }
 };
 
 // ---------- orders ----------
@@ -272,7 +428,6 @@ $("placeBtn").onclick = () => {
     paid: false,
   };
   store.orders = [o, ...store.orders];
-  $("trackBox").dataset.last = o.id;
   alert("Order " + o.id + " placed. Open Dispatch to assign a rider, or Track to follow it.");
 };
 
@@ -286,30 +441,36 @@ function setStatus(id, status, rider) {
 window.assign = (id) => { const o = store.orders.find((x) => x.id === id); const r = nearestRider(o); setStatus(id, "assigned", { name: r.name, km: r.d }); };
 window.advance = (id, s) => setStatus(id, s);
 
+const STATUS_LABEL = { new: "New", assigned: "Rider assigned", picked_up: "On the way", delivered: "Delivered" };
 let riderLayer = L.layerGroup().addTo(map2), orderLayer = L.layerGroup().addTo(map2);
 function renderDispatch() {
   const os = store.orders;
-  $("orders").innerHTML = os.length ? `<table><tr><th>ID</th><th>Route</th><th>Fee</th><th>Status</th><th></th></tr>${os.map((o) => `
-    <tr><td>${o.id}</td><td>${o.pickup.code} → ${o.drop.code}</td><td>${naira(o.fee)}</td>
-    <td><span class="st ${o.status}">${o.status}</span>${o.rider ? `<div class="mut">${o.rider.name} (${o.rider.km.toFixed(1)} km away)</div>` : ""}</td>
-    <td>${o.status === "new" ? `<button class="sec" onclick="assign('${o.id}')">Assign nearest</button>` :
-          o.status === "assigned" ? `<button class="sec" onclick="advance('${o.id}','picked_up')">Picked up</button>` :
-          o.status === "picked_up" ? `<button class="sec" onclick="advance('${o.id}','delivered')">Delivered</button>` : ""}</td></tr>`).join("")}</table>`
-    : '<span class="mut">No orders yet.</span>';
-  $("riders").textContent = "Demo riders: " + RIDERS.map((r) => r.name).join(", ") + " (seeded around Abuja)";
+  $("orders").innerHTML = os.length ? os.map((o) => `
+    <div class="ocard">
+      <div class="ohead"><b>${esc(o.id)}</b><span class="st ${o.status}">${STATUS_LABEL[o.status]}</span></div>
+      <div class="route-line">${esc(o.pickup.code)} to ${esc(o.drop.code)}</div>
+      <div class="meta">${esc(o.name)} · ${naira(o.fee)} · ${o.km.toFixed(1)} km${o.rider ? " · " + esc(o.rider.name) + ", " + o.rider.km.toFixed(1) + " km from pickup" : ""}</div>
+      ${o.status === "new" ? `<button class="btn primary small" onclick="assign('${o.id}')">Assign nearest rider</button>` :
+        o.status === "assigned" ? `<button class="btn soft small" onclick="advance('${o.id}','picked_up')">Mark picked up</button>` :
+        o.status === "picked_up" ? `<button class="btn soft small" onclick="advance('${o.id}','delivered')">Mark delivered</button>` : ""}
+    </div>`).join("")
+    : '<div class="empty-state">No orders yet. Place one from the Order tab.</div>';
+  $("riders").textContent = "Demo riders: " + RIDERS.map((r) => r.name).join(", ") + " (placed around Abuja)";
   riderLayer.clearLayers(); orderLayer.clearLayers();
-  RIDERS.forEach((r) => L.circleMarker([r.lat, r.lng], { radius: 8, color: "#0b6b3a", fillOpacity: .8 }).addTo(riderLayer).bindPopup("Rider " + r.name));
-  os.filter((o) => o.status !== "delivered").forEach((o) => L.marker(o.pickup.coords).addTo(orderLayer).bindPopup(o.id + " pickup"));
+  RIDERS.forEach((r) => L.circleMarker([r.lat, r.lng], { radius: 8, color: "#0b5d3b", fillColor: "#0b5d3b", fillOpacity: .85 }).addTo(riderLayer).bindPopup("Rider " + r.name));
+  os.filter((o) => o.status !== "delivered").forEach((o) => L.marker(o.pickup.coords, { icon: pinIcon("p") }).addTo(orderLayer).bindPopup(o.id + " pickup"));
 }
 
 const STEPS = ["new", "assigned", "picked_up", "delivered"];
 const STEP_LABEL = { new: "Order received", assigned: "Rider assigned", picked_up: "On the way", delivered: "Delivered" };
 function renderTrack() {
   const os = store.orders; const box = $("trackBox");
-  if (!os.length) { box.innerHTML = '<span class="mut">Place an order first.</span>'; return; }
+  if (!os.length) { box.innerHTML = '<div class="empty-state">No orders to track yet. Place one from the Order tab.</div>'; return; }
   box.innerHTML = os.slice(0, 5).map((o) => {
     const i = STEPS.indexOf(o.status);
-    return `<div style="margin-bottom:14px"><b>${o.id}</b> <span class="mut">${o.pickup.code} → ${o.drop.code} · ${naira(o.fee)}</span><div style="margin-top:6px">${STEPS.map((s, j) => `<span class="chip" style="${j <= i ? "" : "opacity:.35"}">${STEP_LABEL[s]}</span>`).join("")}</div>${o.rider ? `<div class="mut">Rider: ${o.rider.name}</div>` : ""}</div>`;
+    return `<div class="tcard"><div class="ohead"><b>${esc(o.id)}</b><span class="meta" style="margin:0">${naira(o.fee)}</span></div>
+      <div class="route-line">${esc(o.pickup.code)} to ${esc(o.drop.code)}</div>
+      <ul class="steps">${STEPS.map((s, j) => `<li class="${j <= i ? "done" : ""}">${STEP_LABEL[s]}${s === "assigned" && o.rider && j <= i ? " · " + esc(o.rider.name) : ""}</li>`).join("")}</ul></div>`;
   }).join("");
 }
 renderDispatch(); renderTrack();
