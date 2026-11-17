@@ -107,6 +107,17 @@
   .pin { width: 18px; height: 18px; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
   .pin.p { background: var(--green); border-radius: 50%; }
   .pin.d { background: var(--ink); border-radius: 4px; }
+  .rider { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; background: var(--ink); color: #fff; border-radius: 999px; padding: 4px 10px; font-size: 13px; font-weight: 700; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); margin: 0 0 14px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend .pin { width: 12px; height: 12px; border-width: 2px; box-shadow: none; }
+  .banner { margin: 10px 0 2px; padding: 10px 12px; border-radius: 12px; background: var(--green-soft); color: var(--green); font-weight: 700; }
+  .banner.wait { background: var(--mist); color: var(--muted); }
+  .banner small { display: block; font-weight: 500; color: var(--muted); }
+  .twoline { font-size: 14px; margin: 8px 0 0; }
+  .twoline div { display: flex; gap: 8px; padding: 2px 0; }
+  .twoline b { flex: none; width: 70px; color: var(--muted); font-weight: 500; }
+  .twoline span { font-weight: 600; word-break: break-word; }
 
   /* dispatch */
   #t-dispatch { display: grid; grid-template-columns: 440px 1fr; }
@@ -210,6 +221,11 @@
   <section id="t-dispatch" class="view hide">
     <div class="board">
       <h2>Orders</h2>
+      <div class="legend">
+        <span><i class="pin p"></i> Pickup</span>
+        <span><i class="pin d"></i> Drop-off</span>
+        <span>🛵 Rider</span>
+      </div>
       <div id="riders" class="riders"></div>
       <div id="orders"></div>
     </div>
@@ -304,7 +320,7 @@ const wide = () => window.innerWidth >= 820;
 document.querySelectorAll(".tabs button").forEach((b) => b.onclick = () => {
   document.querySelectorAll(".tabs button").forEach((x) => x.classList.toggle("on", x === b));
   ["order", "dispatch", "track"].forEach((t) => $("t-" + t).classList.toggle("hide", t !== b.dataset.t));
-  if (b.dataset.t === "dispatch") { renderDispatch(); setTimeout(() => map2.invalidateSize(), 50); }
+  if (b.dataset.t === "dispatch") { renderDispatch(); setTimeout(fitDispatch, 60); }
   if (b.dataset.t === "track") renderTrack();
   if (b.dataset.t === "order") setTimeout(() => map.invalidateSize(), 50);
 });
@@ -422,7 +438,7 @@ $("placeBtn").onclick = () => {
   const o = {
     id: "BL-" + Math.random().toString(36).slice(2, 7).toUpperCase(),
     created: Date.now(),
-    name: $("cname").value.trim() || "Customer", phone: $("cphone").value.trim(),
+    name: $("cname").value.trim().length > 1 ? $("cname").value.trim() : "Customer", phone: $("cphone").value.trim(),
     pickup: sel.pickup, drop: sel.drop, km, fee, status: "new", rider: null,
     // Paystack: add checkout here. Left unpaid in the prototype.
     paid: false,
@@ -457,8 +473,25 @@ function renderDispatch() {
     : '<div class="empty-state">No orders yet. Place one from the Order tab.</div>';
   $("riders").textContent = "Demo riders: " + RIDERS.map((r) => r.name).join(", ") + " (placed around Abuja)";
   riderLayer.clearLayers(); orderLayer.clearLayers();
-  RIDERS.forEach((r) => L.circleMarker([r.lat, r.lng], { radius: 8, color: "#0b5d3b", fillColor: "#0b5d3b", fillOpacity: .85 }).addTo(riderLayer).bindPopup("Rider " + r.name));
-  os.filter((o) => o.status !== "delivered").forEach((o) => L.marker(o.pickup.coords, { icon: pinIcon("p") }).addTo(orderLayer).bindPopup(o.id + " pickup"));
+  dispatchPoints = [];
+  RIDERS.forEach((r) => {
+    L.marker([r.lat, r.lng], { icon: L.divIcon({ className: "", html: `<div class="rider">🛵 ${esc(r.name)}</div>`, iconSize: [0, 0] }) }).addTo(riderLayer);
+    dispatchPoints.push([r.lat, r.lng]);
+  });
+  os.filter((o) => o.status !== "delivered").forEach((o) => {
+    L.marker(o.pickup.coords, { icon: pinIcon("p") }).addTo(orderLayer).bindPopup(o.id + " pickup: " + o.pickup.code);
+    L.marker(o.drop.coords, { icon: pinIcon("d") }).addTo(orderLayer).bindPopup(o.id + " drop-off: " + o.drop.code);
+    L.polyline([o.pickup.coords, o.drop.coords], { color: "#0b5d3b", weight: 3, opacity: .7 }).addTo(orderLayer);
+    dispatchPoints.push(o.pickup.coords, o.drop.coords);
+    const rd = o.rider && RIDERS.find((r) => r.name === o.rider.name);
+    if (rd) L.polyline([[rd.lat, rd.lng], o.pickup.coords], { color: "#0e1a14", weight: 3, dashArray: "6 8" }).addTo(orderLayer);
+  });
+  if (!$("t-dispatch").classList.contains("hide")) fitDispatch();
+}
+let dispatchPoints = [];
+function fitDispatch() {
+  map2.invalidateSize();
+  if (dispatchPoints.length) map2.fitBounds(L.latLngBounds(dispatchPoints), { padding: [50, 50], maxZoom: 14 });
 }
 
 const STEPS = ["new", "assigned", "picked_up", "delivered"];
@@ -468,11 +501,20 @@ function renderTrack() {
   if (!os.length) { box.innerHTML = '<div class="empty-state">No orders to track yet. Place one from the Order tab.</div>'; return; }
   box.innerHTML = os.slice(0, 5).map((o) => {
     const i = STEPS.indexOf(o.status);
-    return `<div class="tcard"><div class="ohead"><b>${esc(o.id)}</b><span class="meta" style="margin:0">${naira(o.fee)}</span></div>
-      <div class="route-line">${esc(o.pickup.code)} to ${esc(o.drop.code)}</div>
+    // Estimates only: assumes an average rider speed of 25 km/h.
+    const mins = (km) => Math.max(2, Math.round(km / 25 * 60));
+    let banner = `<div class="banner wait">Waiting for a rider<small>Dispatch will assign the nearest one.</small></div>`;
+    if (o.status === "assigned") banner = `<div class="banner">${esc(o.rider.name)} is heading to pickup<small>About ${mins(o.rider.km)} min away (estimate)</small></div>`;
+    if (o.status === "picked_up") banner = `<div class="banner">On the way to you<small>About ${mins(o.km)} min to go (estimate)</small></div>`;
+    if (o.status === "delivered") banner = `<div class="banner">Delivered<small>Thanks for using Belora.</small></div>`;
+    return `<div class="tcard"><div class="ohead"><b>${esc(o.id)}</b><span class="meta" style="margin:0">${naira(o.fee)} · ${o.km.toFixed(1)} km</span></div>
+      ${banner}
+      <div class="twoline"><div><b>From</b><span>${esc(o.pickup.code)}</span></div><div><b>To</b><span>${esc(o.drop.code)}</span></div></div>
       <ul class="steps">${STEPS.map((s, j) => `<li class="${j <= i ? "done" : ""}">${STEP_LABEL[s]}${s === "assigned" && o.rider && j <= i ? " · " + esc(o.rider.name) : ""}</li>`).join("")}</ul></div>`;
   }).join("");
 }
+// keep Dispatch and Track in sync when another tab changes an order
+window.addEventListener("storage", () => { renderDispatch(); renderTrack(); });
 renderDispatch(); renderTrack();
 </script>
 </body>
