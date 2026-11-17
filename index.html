@@ -133,6 +133,7 @@
   .pin.b { background: var(--orange); }
   .rider { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; background: var(--ink); color: #fff; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 700; box-shadow: 0 2px 8px rgba(0, 0, 0, .3); }
   .leaflet-container { font-family: var(--body); background: #e8ece0; }
+  .leaflet-tile-pane { filter: saturate(.55) contrast(.95) brightness(1.03); }
 
   /* dispatch */
   .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
@@ -435,7 +436,7 @@ function toast(html) { const t = $("toast"); t.innerHTML = html; t.classList.rem
 const mk = (el) => {
   const m = L.map(el, { zoomControl: false }).setView(ABUJA, 11);
   L.control.zoom({ position: "topright" }).addTo(m);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", { attribution: "© OpenStreetMap contributors © CARTO", subdomains: "abcd", maxZoom: 19 }).addTo(m);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap contributors", maxZoom: 19 }).addTo(m);
   return m;
 };
 const map = mk("map"), map2 = mk("map2"), map3 = mk("map3");
