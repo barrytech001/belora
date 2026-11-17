@@ -10,254 +10,379 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root {
-    --green: #0b5d3b;
-    --green-soft: #e3f1e9;
-    --ink: #0e1a14;
-    --muted: #5b6b62;
-    --mist: #f1f5f2;
-    --line: #dde6e0;
-    --warn: #b45309;
-    --warn-soft: #fdf0dc;
-    --paper: #ffffff;
+    --bg: #eef1e6; --card: #fff; --line: #e0e5d6; --ink: #16221c; --muted: #66766c;
+    --green: #1d5a44; --green-d: #154434; --green-soft: #e3eee4;
+    --orange: #d9743a; --orange-soft: #fbe8da; --amber-soft: #fff2d2; --amber: #8f6200; --grey-soft: #eceee8;
+    --warn: #b45309; --warn-soft: #fdf0dc;
     --display: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
     --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
   * { box-sizing: border-box; }
-  html, body { height: 100%; }
-  body { margin: 0; display: flex; flex-direction: column; font: 16px/1.45 var(--body); color: var(--ink); background: var(--mist); }
-  button, input, textarea { font: inherit; color: inherit; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--body); }
+  button, input { font: inherit; color: inherit; }
   button { cursor: pointer; }
   :focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
   .hide { display: none !important; }
+  h1, h2, h3 { margin: 0; font-family: var(--display); letter-spacing: -0.02em; }
+  .sub { color: var(--muted); margin: 2px 0 0; font-size: 14px; }
 
-  /* top bar */
-  .top { flex: none; height: 56px; display: flex; align-items: center; gap: 18px; padding: 0 16px; background: var(--paper); border-bottom: 1px solid var(--line); z-index: 1300; position: relative; }
-  .brand { font-family: var(--display); font-weight: 800; font-size: 24px; letter-spacing: -0.02em; color: var(--green); display: flex; align-items: center; gap: 8px; }
-  .brand i { width: 12px; height: 12px; border-radius: 50%; background: var(--green); display: inline-block; box-shadow: 0 0 0 4px var(--green-soft); }
-  .tabs { display: flex; gap: 4px; margin-left: auto; }
-  .tabs button { border: 0; background: none; padding: 8px 14px; border-radius: 999px; color: var(--muted); font-weight: 600; }
-  .tabs button.on { background: var(--green); color: #fff; }
-  .powered { font-size: 13px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
-  @media (max-width: 700px) { .powered { display: none; } }
+  /* header */
+  .top { display: flex; align-items: center; gap: 18px; padding: 14px 24px; flex-wrap: wrap; }
+  .brand { font-family: var(--display); font-weight: 800; font-size: 26px; letter-spacing: -0.03em; color: var(--green); display: flex; align-items: flex-start; gap: 2px; margin-right: 10px; }
+  .brand i { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); display: inline-block; margin-top: 6px; }
+  .tabs { display: flex; gap: 6px; }
+  .tabs button { border: 0; background: none; padding: 8px 14px; border-radius: 10px; color: var(--muted); font-weight: 600; }
+  .tabs button.on { background: #dfead9; color: var(--green); }
+  .right { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 14px; }
+  .pill { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 5px 12px; color: var(--muted); }
+  @media (max-width: 760px) {
+    .top { padding: 12px 16px; gap: 10px; }
+    .tabs { order: 3; width: 100%; background: #e3e8d9; border-radius: 12px; padding: 4px; }
+    .tabs button { flex: 1; padding: 8px 4px; }
+    .tabs button.on { background: #fff; }
+    .right { gap: 8px; }
+    .pill { display: none; }
+  }
 
-  main { flex: 1; min-height: 0; position: relative; }
-  .view { position: absolute; inset: 0; }
+  .page { max-width: 1240px; margin: 0 auto; padding: 8px 24px 28px; }
+  @media (max-width: 760px) { .page { padding: 8px 16px 24px; } }
+  .pagehead { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin: 6px 0 20px; flex-wrap: wrap; }
+  .pagehead h1 { font-size: 32px; line-height: 1.1; font-weight: 700; }
+  @media (max-width: 760px) { .pagehead h1 { font-size: 26px; } }
+  .net { text-align: right; font-size: 13px; color: var(--muted); }
+  .net b { display: block; color: var(--green); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+  @media (max-width: 760px) { .net { display: none; } }
+  .foot { margin-top: 22px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  .foot b { color: var(--green); font-weight: 600; }
+  .foot button { background: none; border: 0; color: var(--green); text-decoration: underline; padding: 0 0 0 10px; font-size: 12px; }
 
-  /* order: map + floating sheet */
-  #map { position: absolute; inset: 0; }
-  .sheet { position: absolute; z-index: 1200; background: var(--paper); display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(14, 26, 20, .18); }
-  .sheet-body { overflow: auto; padding: 20px 20px 8px; flex: 1; }
-  @media (min-width: 820px) { .sheet { left: 16px; top: 16px; bottom: 16px; width: 430px; border-radius: 20px; } }
-  @media (max-width: 819px) { .sheet { left: 0; right: 0; bottom: 0; max-height: 68%; border-radius: 20px 20px 0 0; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+  .grid2 { display: grid; grid-template-columns: minmax(340px, 410px) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .grid2.rev { grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); }
+  .stack { display: grid; gap: 20px; }
+  @media (max-width: 900px) { .grid2, .grid2.rev { grid-template-columns: 1fr; } }
 
-  h1 { font-family: var(--display); font-weight: 800; font-size: 30px; line-height: 1.05; letter-spacing: -0.025em; margin: 0 0 6px; }
-  .lede { margin: 0 0 18px; color: var(--muted); }
-
-  .route { position: relative; padding-left: 30px; }
-  .route::before { content: ""; position: absolute; left: 9px; top: 26px; bottom: 26px; border-left: 2px dashed #b9c9bf; }
-  .stop { position: relative; margin-bottom: 14px; }
-  .stop::before { content: ""; position: absolute; left: -29px; top: 14px; width: 14px; height: 14px; background: var(--green); border-radius: 50%; box-shadow: 0 0 0 4px var(--green-soft); }
-  .stop.drop::before { background: var(--ink); border-radius: 3px; box-shadow: 0 0 0 4px #e2e6e3; }
+  /* order */
+  .pcard { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-top: 12px; background: #fff; }
+  .ptop { display: flex; align-items: center; gap: 8px; }
+  .badge { width: 22px; height: 22px; border-radius: 50%; background: var(--green); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; flex: none; }
+  .badge.b { background: var(--orange); }
+  .lab { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .conf { margin-left: auto; background: var(--green-soft); color: var(--green); font-size: 12px; font-weight: 700; border-radius: 999px; padding: 2px 10px; }
   .field { position: relative; }
-  .stop input { width: 100%; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--mist); font-size: 17px; font-weight: 600; letter-spacing: .02em; }
-  .stop input::placeholder { font-weight: 400; letter-spacing: 0; color: #8a9a91; }
-  .stop input:focus { border-color: var(--green); background: #fff; outline: none; }
-  .sug { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 10; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(14, 26, 20, .15); max-height: 220px; overflow: auto; }
-  .sug div { padding: 11px 14px; cursor: pointer; border-bottom: 1px solid var(--mist); font-size: 15px; }
+  .pcard input { width: 100%; border: 0; border-bottom: 1.5px solid var(--line); padding: 8px 0 6px; font-family: var(--display); font-weight: 700; font-size: 22px; letter-spacing: .02em; background: none; }
+  .pcard input::placeholder { font-family: var(--body); font-weight: 400; font-size: 16px; letter-spacing: 0; color: #93a198; }
+  .pcard input:focus { outline: none; border-color: var(--green); }
+  .sug { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 900; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(22, 34, 28, .15); max-height: 220px; overflow: auto; }
+  .sug div { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--bg); font-size: 14px; }
   .sug div:last-child { border-bottom: 0; }
   .sug div:hover { background: var(--green-soft); }
   .sug .empty { color: var(--muted); cursor: default; }
   .sug .empty:hover { background: #fff; }
-
   .info { margin-top: 8px; font-size: 14px; color: var(--muted); }
-  .info .where { margin-top: 6px; color: var(--ink); font-weight: 600; }
+  .info .where { margin-top: 8px; color: var(--ink); }
   .info .warn { color: var(--warn); background: var(--warn-soft); border-radius: 10px; padding: 8px 12px; }
-  .code { display: flex; gap: 6px; }
-  .seg { flex: 1; min-width: 0; text-align: center; padding: 7px 4px 5px; border-radius: 10px; background: var(--green-soft); color: var(--green); font-family: var(--display); font-weight: 800; font-size: 20px; letter-spacing: .03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .link { background: none; border: 0; padding: 4px 0 0; color: var(--green); font-weight: 600; font-size: 13px; }
+  .code { display: flex; gap: 5px; }
+  .seg { flex: 1; min-width: 0; text-align: center; padding: 6px 2px 4px; border-radius: 9px; background: var(--green-soft); color: var(--green); font-family: var(--display); font-weight: 800; font-size: 16px; line-height: 1.1; }
   .seg:first-child { background: var(--green); color: #fff; }
-  .seg small { display: block; margin-top: 2px; font-family: var(--body); font-weight: 500; font-size: 11px; letter-spacing: 0; opacity: .85; }
-
-  .details { margin: 4px 0 14px; }
-  .details summary { cursor: pointer; color: var(--green); font-weight: 600; padding: 6px 0; }
-  .details textarea { width: 100%; margin-top: 8px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--mist); resize: vertical; }
-  .btn { border: 0; border-radius: 12px; padding: 11px 16px; font-weight: 700; }
+  .seg small { display: block; margin-top: 2px; font-family: var(--body); font-weight: 500; font-size: 10px; opacity: .85; }
+  .demo { margin: 14px 0 0; font-size: 13px; color: var(--muted); }
+  .demo button { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 3px 10px; margin: 6px 6px 0 0; font-size: 12px; }
+  .demo button:hover { background: var(--green-soft); }
+  .est { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
+  .est h3 { font-size: 16px; }
+  .erow { display: flex; justify-content: space-between; padding: 5px 0; color: var(--muted); }
+  .erow b { color: var(--ink); font-weight: 600; }
+  .etotal { display: flex; justify-content: space-between; align-items: baseline; padding-top: 10px; border-top: 1px solid var(--line); margin-top: 6px; font-weight: 600; }
+  .etotal b { font-family: var(--display); font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
+  .contact { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 12px; }
+  .contact input { width: 100%; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; }
+  .contact input:focus { border-color: var(--green); outline: none; }
+  .btn { border: 0; border-radius: 12px; padding: 13px 16px; font-weight: 700; }
   .btn.primary { background: var(--green); color: #fff; }
+  .btn.primary:hover:not(:disabled) { background: var(--green-d); }
+  .btn.ghost { background: #fff; color: var(--green); border: 1.5px solid var(--line); margin-top: 8px; }
   .btn.soft { background: var(--green-soft); color: var(--green); }
-  .btn.small { padding: 7px 12px; font-size: 14px; border-radius: 10px; }
+  .btn.small { padding: 6px 12px; font-size: 13px; border-radius: 10px; }
+  .btn.block { width: 100%; }
   .btn:disabled { opacity: .45; cursor: not-allowed; }
-  .chip { display: inline-block; background: var(--green-soft); color: var(--green); border-radius: 999px; padding: 3px 10px; font-size: 13px; font-weight: 600; margin: 2px 4px 2px 0; }
+  .note { font-size: 12px; color: var(--warn); margin-top: 10px; }
+
+  .mapcard { position: relative; padding: 0; overflow: hidden; height: 380px; }
+  .mapcard.short { height: 250px; }
+  .mapcard > div.m { position: absolute; inset: 0; }
+  .mapchip { position: absolute; z-index: 800; left: 50%; bottom: 26px; transform: translateX(-50%); background: #fff; border-radius: 12px; padding: 8px 16px; box-shadow: 0 6px 20px rgba(22, 34, 28, .2); font-weight: 700; white-space: nowrap; }
+  .mapchip span { color: var(--muted); font-weight: 500; margin-left: 10px; }
+  .mapcap { position: absolute; z-index: 800; left: 10px; bottom: 6px; font-size: 11px; color: var(--muted); background: rgba(255, 255, 255, .85); padding: 1px 6px; border-radius: 6px; }
+  @media (max-width: 900px) { .mapcard { height: 300px; } }
+
+  .ai h3 { font-size: 17px; }
+  .askrow { position: relative; margin-top: 12px; }
+  .askrow input { width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 48px 12px 14px; }
+  .askrow input:focus { border-color: var(--green); outline: none; }
+  .askrow button { position: absolute; right: 6px; top: 6px; bottom: 6px; width: 38px; border: 0; border-radius: 9px; background: var(--green-soft); color: var(--green); font-size: 18px; }
+  .fine { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .chip { display: inline-block; background: var(--green-soft); color: var(--green); border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; margin: 2px 4px 2px 0; }
   .cand { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; margin-top: 8px; font-size: 14px; }
   .cand b { font-family: var(--display); }
   .cand .acts { display: flex; gap: 6px; flex: none; }
-  .hint { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 10px; }
 
-  .contact { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 6px; }
-  .contact input { width: 100%; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--mist); }
-  .contact input:focus { border-color: var(--green); background: #fff; outline: none; }
-  .demo { margin: 10px 0 14px; font-size: 13px; color: var(--muted); }
-  .demo button { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 4px 10px; margin: 4px 6px 0 0; font-size: 13px; }
-  .demo button:hover { background: var(--green-soft); }
-  .note { font-size: 13px; color: var(--warn); margin: 6px 0 10px; }
-
-  .bar { flex: none; display: flex; align-items: center; gap: 16px; padding: 12px 20px 16px; border-top: 1px solid var(--line); background: #fff; }
-  .stat small { display: block; font-size: 12px; color: var(--muted); }
-  .stat b { font-family: var(--display); font-weight: 800; font-size: 24px; letter-spacing: -0.02em; }
-  .bar .btn { margin-left: auto; padding: 13px 20px; font-size: 16px; }
-
-  .pin { width: 18px; height: 18px; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
-  .pin.p { background: var(--green); border-radius: 50%; }
-  .pin.d { background: var(--ink); border-radius: 4px; }
-  .rider { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; background: var(--ink); color: #fff; border-radius: 999px; padding: 4px 10px; font-size: 13px; font-weight: 700; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
-  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); margin: 0 0 14px; }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .legend .pin { width: 12px; height: 12px; border-width: 2px; box-shadow: none; }
-  .banner { margin: 10px 0 2px; padding: 10px 12px; border-radius: 12px; background: var(--green-soft); color: var(--green); font-weight: 700; }
-  .banner.wait { background: var(--mist); color: var(--muted); }
-  .banner small { display: block; font-weight: 500; color: var(--muted); }
-  .twoline { font-size: 14px; margin: 8px 0 0; }
-  .twoline div { display: flex; gap: 8px; padding: 2px 0; }
-  .twoline b { flex: none; width: 70px; color: var(--muted); font-weight: 500; }
-  .twoline span { font-weight: 600; word-break: break-word; }
+  .pin { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 700 12px var(--body); border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .3); background: var(--green); }
+  .pin.b { background: var(--orange); }
+  .rider { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; background: var(--ink); color: #fff; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 700; box-shadow: 0 2px 8px rgba(0, 0, 0, .3); }
+  .leaflet-container { font-family: var(--body); background: #e8ece0; }
 
   /* dispatch */
-  #t-dispatch { display: grid; grid-template-columns: 440px 1fr; }
-  .board { overflow: auto; padding: 18px; background: var(--mist); }
-  .board h2, .trackwrap h2 { font-family: var(--display); font-weight: 800; font-size: 24px; letter-spacing: -0.02em; margin: 0 0 12px; }
-  #map2 { height: 100%; }
-  @media (max-width: 819px) { #t-dispatch { grid-template-columns: 1fr; grid-template-rows: 260px 1fr; } #map2 { grid-row: 1; } .board { grid-row: 2; } }
-  .ocard { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
-  .ohead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-  .ohead b { font-family: var(--display); font-size: 18px; }
-  .st { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--mist); color: var(--muted); }
-  .st.assigned { background: var(--warn-soft); color: var(--warn); }
-  .st.picked_up { background: #e2eefb; color: #1d4f91; }
-  .st.delivered { background: var(--green-soft); color: var(--green); }
-  .route-line { margin: 8px 0; font-size: 14px; font-weight: 600; word-break: break-word; }
-  .meta { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
-  .riders { font-size: 14px; color: var(--muted); margin-bottom: 14px; }
-  .empty-state { color: var(--muted); padding: 24px 8px; text-align: center; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  @media (max-width: 760px) { .stats { grid-template-columns: 1fr 1fr; } }
+  .stat { padding: 16px 18px; }
+  .stat small { color: var(--muted); font-size: 13px; }
+  .stat .n { font-family: var(--display); font-weight: 800; font-size: 34px; letter-spacing: -0.03em; line-height: 1.1; margin-top: 4px; }
+  .stat .s { font-size: 12px; color: var(--muted); }
+  .stat .s.hot { color: var(--orange); }
+  .dgrid { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 20px; align-items: start; }
+  @media (max-width: 960px) { .dgrid { grid-template-columns: 1fr; } }
+  .ohead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .ohead h2 { font-size: 20px; }
+  .ohead .count { background: var(--green-soft); color: var(--green); font-size: 12px; font-weight: 700; border-radius: 999px; padding: 2px 10px; }
+  .ohead input { margin-left: auto; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; width: 190px; max-width: 100%; }
+  .dtabs { display: flex; gap: 6px; margin: 14px 0 6px; flex-wrap: wrap; }
+  .dtabs button { border: 0; background: none; padding: 6px 12px; border-radius: 999px; color: var(--muted); font-weight: 600; font-size: 13px; }
+  .dtabs button.on { background: var(--green-soft); color: var(--green); }
+  .orow { display: grid; grid-template-columns: 100px minmax(0, 1fr) 130px 90px 14px; gap: 10px; align-items: center; padding: 12px 10px; border-top: 1px solid var(--line); cursor: pointer; }
+  .orow.hd { cursor: default; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding-top: 8px; padding-bottom: 6px; border-top: 0; }
+  .orow.sel { background: #f1f6ec; box-shadow: inset 3px 0 0 var(--green); }
+  .orow small { display: block; color: var(--muted); font-size: 12px; word-break: break-word; }
+  .c-fee { font-weight: 700; text-align: right; }
+  .c-go { color: var(--muted); }
+  .tag { font-style: normal; font-size: 10px; background: var(--grey-soft); color: var(--muted); border-radius: 6px; padding: 1px 6px; margin-left: 4px; font-weight: 600; }
+  @media (max-width: 760px) {
+    .orow.hd { display: none; }
+    .orow { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "id st" "del fee"; row-gap: 4px; }
+    .c-id { grid-area: id; } .c-st { grid-area: st; } .c-del { grid-area: del; } .c-fee { grid-area: fee; } .c-go { display: none; }
+  }
+  .st { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .st-new { background: var(--orange-soft); color: #b8541c; }
+  .st-assigned { background: var(--amber-soft); color: var(--amber); }
+  .st-transit { background: var(--green-soft); color: var(--green); }
+  .st-done { background: var(--grey-soft); color: var(--muted); }
+  .dhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .dhead h3 { font-size: 20px; }
+  .dsub { color: var(--muted); font-size: 13px; margin: 4px 0 14px; word-break: break-word; }
+  .rl { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 8px; }
+  .rl em { font-style: normal; font-size: 12px; font-weight: 600; color: var(--muted); border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px; }
+  .rrow { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; margin-bottom: 8px; }
+  .rrow.pick { border-color: var(--green); background: #f1f6ec; }
+  .rrow .rk { width: 22px; height: 22px; border-radius: 50%; background: var(--grey-soft); display: grid; place-items: center; font-size: 12px; font-weight: 700; flex: none; }
+  .rrow.pick .rk { background: var(--green); color: #fff; }
+  .rrow small { display: block; color: var(--muted); font-size: 12px; }
+  .rrow .flag { margin-left: auto; color: var(--green); font-weight: 700; font-size: 13px; white-space: nowrap; }
+  .empty-state { color: var(--muted); padding: 28px 8px; text-align: center; }
+  .empty-state .btn { margin: 10px 4px 0; }
 
   /* track */
-  .trackwrap { height: 100%; overflow: auto; padding: 22px 16px; }
-  .trackin { max-width: 560px; margin: 0 auto; }
-  .tcard { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
-  .steps { list-style: none; margin: 14px 0 4px; padding: 0 0 0 6px; }
-  .steps li { position: relative; padding: 0 0 14px 26px; color: #8a9a91; font-weight: 600; }
-  .steps li::before { content: ""; position: absolute; left: 0; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid #c8d4cc; }
-  .steps li::after { content: ""; position: absolute; left: 6px; top: 20px; bottom: -3px; border-left: 2px solid #dfe7e2; }
+  .ordnum { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 18px; }
+  .ordnum label { color: var(--muted); font-size: 13px; }
+  .ordnum input { flex: 1; min-width: 120px; border: 0; font-family: var(--display); font-weight: 700; font-size: 18px; background: none; }
+  .ordnum input:focus { outline: none; }
+  .ordnum .msg { width: 100%; font-size: 13px; color: var(--warn); }
+  .rcard h3 { font-size: 17px; }
+  .rcols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 12px; }
+  .rcols small { color: var(--muted); font-size: 12px; display: block; }
+  .rcols b { font-family: var(--display); font-size: 17px; }
+  .rfoot { display: flex; justify-content: space-between; border-top: 1px solid var(--line); margin-top: 14px; padding-top: 10px; color: var(--muted); font-size: 13px; }
+  .rfoot b { color: var(--ink); }
+  .status { background: var(--green); color: #fff; border-radius: 16px; padding: 22px; }
+  .status .chipw { display: inline-block; background: rgba(255, 255, 255, .18); border-radius: 999px; padding: 3px 12px; font-size: 12px; font-weight: 700; }
+  .status .big { font-family: var(--display); font-weight: 800; font-size: 32px; letter-spacing: -0.02em; line-height: 1.1; margin: 14px 0 6px; }
+  .status .small { opacity: .85; font-size: 14px; }
+  .steps { list-style: none; margin: 14px 0 0; padding: 0; }
+  .steps li { position: relative; display: flex; justify-content: space-between; gap: 10px; padding: 0 0 18px 26px; color: #93a198; }
+  .steps li b { display: block; font-weight: 700; }
+  .steps li small { font-size: 13px; }
+  .steps li time { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .steps li::before { content: ""; position: absolute; left: 0; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid #cdd6c8; }
+  .steps li::after { content: ""; position: absolute; left: 6px; top: 20px; bottom: 0; border-left: 2px solid #e0e5d6; }
+  .steps li:last-child { padding-bottom: 0; }
   .steps li:last-child::after { display: none; }
   .steps li.done { color: var(--ink); }
+  .steps li.done small { color: var(--muted); }
   .steps li.done::before { background: var(--green); border-color: var(--green); }
   .steps li.done::after { border-color: var(--green); }
+  .rider-card { display: flex; align-items: center; gap: 12px; }
+  .avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--green-soft); color: var(--green); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 18px; flex: none; }
+  .rider-card small { color: var(--muted); font-size: 12px; display: block; }
 
-  .leaflet-container { font-family: var(--body); }
+  #toast { position: fixed; z-index: 2000; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: #fff; border-radius: 14px; padding: 12px 16px; display: flex; gap: 10px; align-items: center; box-shadow: 0 10px 30px rgba(0, 0, 0, .3); max-width: calc(100% - 24px); flex-wrap: wrap; }
+  #toast button { border: 0; border-radius: 8px; padding: 5px 10px; background: #fff; color: var(--green); font-weight: 700; font-size: 13px; }
   @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
 </style>
 </head>
 <body>
 
 <header class="top">
-  <div class="brand"><i></i>Belora</div>
+  <div class="brand">belora<i></i></div>
   <nav class="tabs" aria-label="Sections">
-    <button data-t="order" class="on">Order</button>
+    <button data-t="order" class="on">New delivery</button>
     <button data-t="dispatch">Dispatch</button>
-    <button data-t="track">Track</button>
+    <button data-t="track">Track delivery</button>
   </nav>
-  <span class="powered">Powered by the NIPOST postcode</span>
+  <div class="right"><span class="pill">Demo workspace</span><span>Abuja, NG</span></div>
 </header>
 
-<main>
-  <!-- ORDER -->
-  <section id="t-order" class="view">
-    <div id="map" aria-label="Map"></div>
-    <div class="sheet">
-      <div class="sheet-body">
-        <h1>Every address, one code.</h1>
-        <p class="lede">Enter a postcode. Belora confirms the building, prices the trip and finds the nearest rider.</p>
+<!-- NEW DELIVERY -->
+<section id="t-order" class="page">
+  <div class="pagehead">
+    <div><h1>A better address. A smoother delivery.</h1><p class="sub">From a verified building to the right doorstep.</p></div>
+    <div class="net"><b>NIPOST postcode network</b>Building-level delivery, by design.</div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h2 style="font-size:20px">Your delivery</h2>
+      <p class="sub">Two postcodes. One simple journey.</p>
 
-        <div class="route">
-          <div class="stop pickup">
-            <div class="field">
-              <input id="pickup" placeholder="Pickup postcode" autocomplete="off" aria-label="Pickup postcode">
-              <div id="sug-pickup" class="sug hide"></div>
-            </div>
-            <div id="info-pickup" class="info"></div>
-          </div>
-          <div class="stop drop">
-            <div class="field">
-              <input id="drop" placeholder="Drop-off postcode" autocomplete="off" aria-label="Drop-off postcode">
-              <div id="sug-drop" class="sug hide"></div>
-            </div>
-            <div id="info-drop" class="info"></div>
-          </div>
+      <div class="pcard">
+        <div class="ptop"><span class="badge">A</span><span class="lab">Pickup postcode</span><span id="conf-pickup"></span></div>
+        <div class="field">
+          <input id="pickup" placeholder="Enter a postcode" autocomplete="off" aria-label="Pickup postcode">
+          <div id="sug-pickup" class="sug hide"></div>
         </div>
-
-        <details class="details">
-          <summary>Don't know the code? Describe the place</summary>
-          <textarea id="free" rows="2" placeholder="For example: near the National Mosque, Abuja"></textarea>
-          <div style="margin-top:8px"><button class="btn soft small" id="resolveBtn">Find postcode</button></div>
-          <div id="resolveOut"></div>
-        </details>
-
-        <div class="contact">
-          <input id="cname" placeholder="Your name" aria-label="Your name">
-          <input id="cphone" placeholder="Phone number" aria-label="Phone number" inputmode="tel">
-        </div>
-
-        <div class="demo">Demo codes: tap to use
-          <div id="demoChips"></div>
-        </div>
-        <div id="mapNote" class="note"></div>
+        <div id="info-pickup" class="info"></div>
       </div>
-      <div class="bar">
-        <div class="stat"><small>Distance</small><b id="dist">-</b></div>
-        <div class="stat"><small>Delivery fee</small><b id="fee">-</b></div>
-        <button class="btn primary" id="placeBtn" disabled>Place order</button>
+      <div class="pcard">
+        <div class="ptop"><span class="badge b">B</span><span class="lab">Drop-off postcode</span><span id="conf-drop"></span></div>
+        <div class="field">
+          <input id="drop" placeholder="Enter a postcode" autocomplete="off" aria-label="Drop-off postcode">
+          <div id="sug-drop" class="sug hide"></div>
+        </div>
+        <div id="info-drop" class="info"></div>
+      </div>
+
+      <div class="demo">Try demo codes: tap to use<div id="demoChips"></div></div>
+
+      <div class="est">
+        <h3>Delivery estimate</h3>
+        <p class="sub" id="estLine">Confirm both postcodes to see your estimate.</p>
+        <div class="erow"><span>Base fee</span><b id="baseFee">-</b></div>
+        <div class="erow"><span>Distance fee</span><b id="distFee">-</b></div>
+        <div class="etotal"><span>Total delivery fee</span><b id="fee">-</b></div>
+      </div>
+
+      <div class="contact">
+        <input id="cname" placeholder="Your name" aria-label="Your name">
+        <input id="cphone" placeholder="Phone number" aria-label="Phone number" inputmode="tel">
+      </div>
+      <button class="btn primary block" id="placeBtn" disabled>Place order &rarr;</button>
+      <div id="mapNote" class="note"></div>
+    </div>
+
+    <div class="stack">
+      <div class="card mapcard">
+        <div id="map" class="m" aria-label="Map"></div>
+        <div id="mapChip" class="mapchip hide"></div>
+        <div class="mapcap">Illustrative route · Not for navigation</div>
+      </div>
+      <div class="card ai">
+        <h3>✦ No postcode? Just describe it.</h3>
+        <p class="sub">AI finds postcode suggestions. You confirm the building.</p>
+        <div class="askrow">
+          <input id="free" placeholder="For example: near the National Mosque, Abuja" aria-label="Describe the place">
+          <button id="resolveBtn" aria-label="Find postcode">&rarr;</button>
+        </div>
+        <div id="resolveOut"></div>
+        <div class="fine">NIPOST postcode API · Review the building before using a match.</div>
       </div>
     </div>
-  </section>
+  </div>
+  <div class="foot"><span>Demo data · Sample postcode results, locations and prices. NIPOST API integration preview.</span><b>Address precisely. Deliver confidently.</b></div>
+</section>
 
-  <!-- DISPATCH -->
-  <section id="t-dispatch" class="view hide">
-    <div class="board">
-      <h2>Orders</h2>
-      <div class="legend">
-        <span><i class="pin p"></i> Pickup</span>
-        <span><i class="pin d"></i> Drop-off</span>
-        <span>🛵 Rider</span>
-      </div>
-      <div id="riders" class="riders"></div>
-      <div id="orders"></div>
+<!-- DISPATCH -->
+<section id="t-dispatch" class="page hide">
+  <div class="pagehead">
+    <div><h1>Dispatch, without the guesswork.</h1><p class="sub">Your orders, riders and routes. One live workspace.</p></div>
+    <div class="net"><b>NIPOST postcode network</b>Building-level delivery, by design.</div>
+  </div>
+  <div id="stats" class="stats"></div>
+  <div class="dgrid">
+    <div class="card">
+      <div class="ohead"><h2>Orders</h2><span class="count" id="activeCount"></span><input id="q" placeholder="Search ID or postcode" aria-label="Search orders"></div>
+      <div id="dtabs" class="dtabs"></div>
+      <div class="orow hd"><div>Order</div><div>Delivery</div><div>Status</div><div style="text-align:right">Fee</div><div></div></div>
+      <div id="orderRows"></div>
     </div>
-    <div id="map2"></div>
-  </section>
+    <div class="stack">
+      <div class="card mapcard short">
+        <div id="map2" class="m"></div>
+        <div class="mapcap">A pickup · B drop-off · riders in dark · demo positions</div>
+      </div>
+      <div class="card" id="detail"></div>
+    </div>
+  </div>
+  <div class="foot"><span>Demo workspace · Sample orders, rider positions and postcode results.</span><span><button onclick="addSamples()">Add sample orders</button><button onclick="clearAll()">Clear demo data</button></span></div>
+</section>
 
-  <!-- TRACK -->
-  <section id="t-track" class="view hide">
-    <div class="trackwrap"><div class="trackin">
-      <h2>Track an order</h2>
-      <div id="trackBox"></div>
-    </div></div>
-  </section>
-</main>
+<!-- TRACK -->
+<section id="t-track" class="page hide">
+  <div class="pagehead">
+    <div><h1>Every step, in sight.</h1><p class="sub">Follow your delivery from pickup to doorstep.</p></div>
+    <div class="net"><b>NIPOST postcode network</b>Building-level delivery, by design.</div>
+  </div>
+  <div id="trackEmpty" class="card empty-state hide">
+    No orders to track yet.<br>
+    <button class="btn primary" onclick="showTab('order')">New delivery</button>
+    <button class="btn soft" onclick="addSamples();showTab('track')">Add sample orders</button>
+  </div>
+  <div id="trackGrid" class="grid2 rev">
+    <div class="stack">
+      <div class="card ordnum">
+        <label for="tnum">Order number</label>
+        <input id="tnum" aria-label="Order number">
+        <button class="btn soft small" id="tgo">Track</button>
+        <div id="tmsg" class="msg"></div>
+      </div>
+      <div class="card mapcard">
+        <div id="map3" class="m"></div>
+        <div class="mapcap">Illustrative route · Rider position is simulated</div>
+      </div>
+      <div class="card rcard" id="routeCard"></div>
+    </div>
+    <div class="stack">
+      <div class="status" id="statusCard"></div>
+      <div class="card" id="progressCard"></div>
+      <div class="card" id="riderCard"></div>
+    </div>
+  </div>
+  <div class="foot"><span id="trackFoot">Demo data · Illustrative tracking, rider location and postcode results.</span></div>
+</section>
+
+<div id="toast" class="hide" role="status"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ---------- helpers ----------
+// ---------- constants & helpers ----------
 const $ = (id) => document.getElementById(id);
-const ABUJA = [9.0765, 7.3986];
-const RIDERS = [
-  { id: "r1", name: "Musa",  lat: 9.0765, lng: 7.3986 },
-  { id: "r2", name: "Chika", lat: 9.0579, lng: 7.4951 },
-  { id: "r3", name: "Tunde", lat: 9.0300, lng: 7.4700 },
+const ABUJA = [9.0667, 7.4833]; // approximate city centre
+const RIDERS = [ // demo riders, placed around the centre
+  { id: "r1", name: "Musa Bello",   lat: 9.0790, lng: 7.4700 },
+  { id: "r2", name: "Ada Okafor",   lat: 9.0520, lng: 7.4950 },
+  { id: "r3", name: "Tunde Bakare", lat: 9.0700, lng: 7.5120 },
 ];
-const FEE_BASE = 500, FEE_PER_KM = 150;
+const BASE_FEE = 1000, PER_KM = 250, SPEED_KMH = 25;
 const DEMO_CODES = ["FC-01-A01-KP-27", "FC-01-A01-LR-01", "FC-01-A01-MH-01"];
 
 const store = {
   get orders() { try { return JSON.parse(localStorage.getItem("belora_orders") || "[]"); } catch { return []; } },
   set orders(v) { try { localStorage.setItem("belora_orders", JSON.stringify(v)); } catch {} },
 };
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const naira = (n) => "₦" + Number(n).toLocaleString();
+const norm = (c) => (c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+const first = (n) => String(n || "").split(" ")[0];
+const hhmm = (t) => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const T = (o) => o.times || { new: o.created };
 
 function haversine(a, b) {
   const R = 6371, rad = (x) => x * Math.PI / 180;
@@ -265,9 +390,9 @@ function haversine(a, b) {
   const h = Math.sin(dLat/2)**2 + Math.cos(rad(a[0]))*Math.cos(rad(b[0]))*Math.sin(dLng/2)**2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
-const naira = (n) => "₦" + Number(n).toLocaleString();
-const norm = (c) => (c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function price(km) { const dist = Math.round(PER_KM * km / 50) * 50; return { base: BASE_FEE, dist, total: BASE_FEE + dist }; }
+function mins(km) { return Math.max(3, Math.round(km / SPEED_KMH * 60) + 3); }
+function range(km) { const m = mins(km); return m + "–" + Math.round(m * 1.4) + " min"; }
 
 // Postcode as a segmented plate: state, LGA, district, area, unit.
 function plate(code) {
@@ -295,43 +420,48 @@ function coordsFrom(data) {
 }
 function fallbackCoords(code) { // deterministic spread around Abuja when the API gives no coordinates
   let h = 0; for (const ch of norm(code)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return [ABUJA[0] + ((h % 1000) / 1000 - .5) * 0.12, ABUJA[1] + (((h >> 10) % 1000) / 1000 - .5) * 0.12];
+  return [ABUJA[0] + ((h % 1000) / 1000 - .5) * 0.09, ABUJA[1] + (((h >> 10) % 1000) / 1000 - .5) * 0.09];
 }
-
 async function api(op, params) {
   const qs = new URLSearchParams({ op, ...params });
   const r = await fetch("/api/pc?" + qs);
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
 
+let toastTimer;
+function toast(html) { const t = $("toast"); t.innerHTML = html; t.classList.remove("hide"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add("hide"), 9000); }
+
 // ---------- maps ----------
 const mk = (el) => {
   const m = L.map(el, { zoomControl: false }).setView(ABUJA, 11);
   L.control.zoom({ position: "topright" }).addTo(m);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap" }).addTo(m);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", { attribution: "© OpenStreetMap contributors © CARTO", subdomains: "abcd", maxZoom: 19 }).addTo(m);
   return m;
 };
-const map = mk("map"), map2 = mk("map2");
-const pinIcon = (kind) => L.divIcon({ className: "", html: `<div class="pin ${kind}"></div>`, iconSize: [18, 18], iconAnchor: [9, 9] });
-const pins = {}; let line = null;
-const wide = () => window.innerWidth >= 820;
+const map = mk("map"), map2 = mk("map2"), map3 = mk("map3");
+const pinIcon = (k) => L.divIcon({ className: "", html: `<div class="pin ${k === "b" ? "b" : ""}">${k === "b" ? "B" : "A"}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] });
+const riderIcon = (label) => L.divIcon({ className: "", html: `<div class="rider">🛵 ${esc(label)}</div>`, iconSize: [0, 0] });
 
 // ---------- tabs ----------
-document.querySelectorAll(".tabs button").forEach((b) => b.onclick = () => {
-  document.querySelectorAll(".tabs button").forEach((x) => x.classList.toggle("on", x === b));
-  ["order", "dispatch", "track"].forEach((t) => $("t-" + t).classList.toggle("hide", t !== b.dataset.t));
-  if (b.dataset.t === "dispatch") { renderDispatch(); setTimeout(fitDispatch, 60); }
-  if (b.dataset.t === "track") renderTrack();
-  if (b.dataset.t === "order") setTimeout(() => map.invalidateSize(), 50);
-});
+function showTab(t) {
+  document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.t === t));
+  ["order", "dispatch", "track"].forEach((x) => $("t-" + x).classList.toggle("hide", x !== t));
+  if (t === "order") setTimeout(() => { map.invalidateSize(); if (line) map.fitBounds(line.getBounds(), { padding: [50, 50] }); }, 60);
+  if (t === "dispatch") { renderDispatch(); setTimeout(fitDispatch, 60); }
+  if (t === "track") { renderTrack(); setTimeout(fitTrack, 60); }
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll(".tabs button").forEach((b) => b.onclick = () => showTab(b.dataset.t));
+window.showTab = showTab;
 
-// ---------- postcode pickers ----------
+// ---------- new delivery ----------
 const sel = { pickup: null, drop: null };
+const pins = {}; let line = null, curKm = null, curPrice = null;
 
-function wirePicker(key, inputId, sugId, infoId) {
-  const input = $(inputId), sug = $(sugId); let timer;
+function wirePicker(key) {
+  const input = $(key), sug = $("sug-" + key); let timer;
   input.addEventListener("input", () => {
-    sel[key] = null; $(infoId).innerHTML = ""; refresh();
+    sel[key] = null; $("info-" + key).innerHTML = ""; $("conf-" + key).innerHTML = ""; refresh();
     clearTimeout(timer);
     const q = input.value.trim();
     if (q.length < 2) { sug.classList.add("hide"); return; }
@@ -340,21 +470,23 @@ function wirePicker(key, inputId, sugId, infoId) {
       if (status !== 200) { sug.innerHTML = `<div class="empty">Error ${status}: ${esc((body.error && (body.error.message || body.error)) || "request failed")}</div>`; sug.classList.remove("hide"); return; }
       const items = listFrom(body);
       sug.innerHTML = items.length ? "" : '<div class="empty">No suggestions. Press Enter to check the full code.</div>';
-      items.forEach((it) => { const d = document.createElement("div"); d.textContent = it.label; d.onclick = () => choose(key, it, input, sug, $(infoId)); sug.appendChild(d); });
+      items.forEach((it) => { const d = document.createElement("div"); d.textContent = it.label; d.onclick = () => choose(key, it); sug.appendChild(d); });
       sug.classList.remove("hide");
     }, 250);
   });
-  // allow typing or pasting a full code and pressing Enter
-  input.addEventListener("keydown", (e) => { if (e.key === "Enter") choose(key, { code: input.value.trim(), label: input.value.trim() }, input, sug, $(infoId)); });
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") choose(key, { code: input.value.trim() }); });
+  input.addEventListener("blur", () => setTimeout(() => sug.classList.add("hide"), 200));
 }
 
-async function choose(key, it, input, sug, info) {
-  it.code = (it.code || "").trim().toUpperCase();
-  input.value = it.code; sug.classList.add("hide");
+async function choose(key, it) {
+  const input = $(key), sug = $("sug-" + key), info = $("info-" + key), conf = $("conf-" + key);
+  const code = (it.code || "").trim().toUpperCase();
+  if (!code) return;
+  input.value = code; sug.classList.add("hide"); conf.innerHTML = "";
   info.textContent = "Checking with NIPOST...";
   // Try a richer level first (address details); fall back to level 1 (validity only) if the key lacks access.
-  let { status, body } = await api("lookup", { code: it.code, level: 3 });
-  if (status !== 200) ({ status, body } = await api("lookup", { code: it.code, level: 1 }));
+  let { status, body } = await api("lookup", { code, level: 3 });
+  if (status !== 200) ({ status, body } = await api("lookup", { code, level: 1 }));
   const d = body && body.data;
   if (status !== 200 || !d || d.valid === false) {
     info.innerHTML = `<div class="warn">NIPOST doesn't recognise this code${status !== 200 ? " (error " + status + ")" : ""}. Check it and try again.</div>`;
@@ -363,54 +495,48 @@ async function choose(key, it, input, sug, info) {
   const a = d.administrative_address || {};
   const where = [a.locality_name, a.lga_name, a.state_name].filter(Boolean).join(", ");
   const house = d.recent_house_address && d.recent_house_address.recent;
-  info.innerHTML = plate(d.postcode || it.code) +
-    `<div class="where">${esc(where || "Valid postcode")}${house ? " · " + esc(house) : ""}</div>`;
   const real = coordsFrom(d);
-  sel[key] = { code: d.postcode || it.code, coords: real || fallbackCoords(it.code), approx: !real };
+  const final = d.postcode || code;
+  sel[key] = { code: final, coords: real || fallbackCoords(final), approx: !real, where: where + (house ? " · " + house : "") };
+  conf.innerHTML = '<span class="conf">✓ Confirmed</span>';
+  info.innerHTML = plate(final) + `<div class="where">${esc(sel[key].where || "Valid postcode")}</div><button class="link" onclick="viewBuilding('${key}')">View building ↗</button>`;
   refresh();
 }
+window.viewBuilding = (key) => { if (sel[key]) { map.setView(sel[key].coords, 15); if (pins[key]) pins[key].openPopup(); $("map").scrollIntoView({ block: "center" }); } };
 
-wirePicker("pickup", "pickup", "sug-pickup", "info-pickup");
-wirePicker("drop", "drop", "sug-drop", "info-drop");
-
-// demo chips
+wirePicker("pickup"); wirePicker("drop");
 DEMO_CODES.forEach((c) => {
   const b = document.createElement("button"); b.textContent = c;
-  b.onclick = () => {
-    const key = !sel.pickup ? "pickup" : "drop";
-    choose(key, { code: c }, $(key), $("sug-" + key), $("info-" + key));
-  };
+  b.onclick = () => choose(!sel.pickup ? "pickup" : "drop", { code: c });
   $("demoChips").appendChild(b);
 });
 
-let km = null, fee = null;
 function refresh() {
-  [["pickup", "p"], ["drop", "d"]].forEach(([k, cls]) => {
+  [["pickup", "a"], ["drop", "b"]].forEach(([k, kind]) => {
     if (pins[k]) { map.removeLayer(pins[k]); pins[k] = null; }
-    if (sel[k]) pins[k] = L.marker(sel[k].coords, { icon: pinIcon(cls) }).addTo(map).bindPopup((k === "pickup" ? "Pickup: " : "Drop-off: ") + sel[k].code);
+    if (sel[k]) pins[k] = L.marker(sel[k].coords, { icon: pinIcon(kind) }).addTo(map).bindPopup((k === "pickup" ? "Pickup: " : "Drop-off: ") + sel[k].code);
   });
   if (line) { map.removeLayer(line); line = null; }
-  km = fee = null;
-  $("mapNote").textContent = "";
+  curKm = curPrice = null;
+  $("mapNote").textContent = ""; $("mapChip").classList.add("hide");
   if (sel.pickup && sel.drop) {
-    km = haversine(sel.pickup.coords, sel.drop.coords);
-    fee = Math.round((FEE_BASE + FEE_PER_KM * km) / 50) * 50;
-    line = L.polyline([sel.pickup.coords, sel.drop.coords], { color: "#0b5d3b", weight: 4 }).addTo(map);
-    map.fitBounds(line.getBounds(), {
-      paddingTopLeft: [wide() ? 460 : 30, 60],
-      paddingBottomRight: [30, wide() ? 60 : Math.round(window.innerHeight * 0.5)],
-    });
-    if (sel.pickup.approx || sel.drop.approx) $("mapNote").textContent = "Demo note: the test data has no coordinates, so pins are approximate and distance is in a straight line.";
+    curKm = haversine(sel.pickup.coords, sel.drop.coords); curPrice = price(curKm);
+    line = L.polyline([sel.pickup.coords, sel.drop.coords], { color: "#1d5a44", weight: 4 }).addTo(map);
+    map.fitBounds(line.getBounds(), { padding: [50, 50] });
+    $("mapChip").innerHTML = `${curKm.toFixed(1)} km<span>${range(curKm)}</span>`; $("mapChip").classList.remove("hide");
+    if (sel.pickup.approx || sel.drop.approx) $("mapNote").textContent = "Demo note: the test data has no coordinates, so pin positions and distance are illustrative.";
   } else if (sel.pickup || sel.drop) {
     map.setView((sel.pickup || sel.drop).coords, 13);
   }
-  $("dist").textContent = km == null ? "-" : km.toFixed(1) + " km";
-  $("fee").textContent = fee == null ? "-" : naira(fee);
+  $("estLine").textContent = curKm == null ? "Confirm both postcodes to see your estimate." : `${curKm.toFixed(1)} km · Approximately ${range(curKm)}`;
+  $("baseFee").textContent = curPrice ? naira(curPrice.base) : "-";
+  $("distFee").textContent = curPrice ? naira(curPrice.dist) : "-";
+  $("fee").textContent = curPrice ? naira(curPrice.total) : "-";
   $("placeBtn").disabled = !(sel.pickup && sel.drop);
 }
 
 // ---------- AI resolver ----------
-$("resolveBtn").onclick = async () => {
+async function resolve() {
   const text = $("free").value.trim(); if (!text) return;
   const out = $("resolveOut"); out.innerHTML = '<div class="hint">Searching...</div>';
   try {
@@ -423,99 +549,240 @@ $("resolveBtn").onclick = async () => {
       const label = typeof c.raw === "string" ? c.raw : [c.code, c.raw.display || c.raw.name || c.raw.address].filter(Boolean).join(" · ");
       const d = document.createElement("div"); d.className = "cand";
       d.innerHTML = `<span><b>${esc(c.code)}</b>${label !== c.code ? "<br>" + esc(label.replace(c.code + " · ", "")) : ""}</span><span class="acts"><button class="btn soft small" data-k="pickup">Pickup</button><button class="btn soft small" data-k="drop">Drop-off</button></span>`;
-      d.querySelectorAll("button").forEach((btn) => btn.onclick = () => {
-        const key = btn.dataset.k;
-        choose(key, { code: c.code }, $(key), $("sug-" + key), $("info-" + key));
-      });
+      d.querySelectorAll("button").forEach((btn) => btn.onclick = () => choose(btn.dataset.k, { code: c.code }));
       out.appendChild(d);
     });
-    if (b.candidates.length) out.insertAdjacentHTML("beforeend", '<div class="hint">These are real NIPOST results. Confirm the one that is yours.</div>');
   } catch (e) { out.innerHTML = '<div class="info"><div class="warn">Could not reach the search. Check your connection.</div></div>'; }
-};
+}
+$("resolveBtn").onclick = resolve;
+$("free").addEventListener("keydown", (e) => { if (e.key === "Enter") resolve(); });
 
 // ---------- orders ----------
+function nextId() {
+  const nums = store.orders.map((o) => parseInt(String(o.id || "").replace(/\D/g, ""), 10)).filter((n) => !isNaN(n) && n >= 1000);
+  return "BL-" + ((nums.length ? Math.max(...nums) : 1000) + 1);
+}
 $("placeBtn").onclick = () => {
+  if (!(sel.pickup && sel.drop)) return;
+  const nm = $("cname").value.trim();
+  const now = Date.now();
   const o = {
-    id: "BL-" + Math.random().toString(36).slice(2, 7).toUpperCase(),
-    created: Date.now(),
-    name: $("cname").value.trim().length > 1 ? $("cname").value.trim() : "Customer", phone: $("cphone").value.trim(),
-    pickup: sel.pickup, drop: sel.drop, km, fee, status: "new", rider: null,
+    id: nextId(), created: now, name: nm.length > 1 ? nm : "Customer", phone: $("cphone").value.trim(),
+    pickup: sel.pickup, drop: sel.drop, km: curKm, base: curPrice.base, distFee: curPrice.dist, fee: curPrice.total,
+    status: "new", rider: null, times: { new: now },
     // Paystack: add checkout here. Left unpaid in the prototype.
     paid: false,
   };
   store.orders = [o, ...store.orders];
-  alert("Order " + o.id + " placed. Open Dispatch to assign a rider, or Track to follow it.");
+  dSel = o.id; tSel = o.id;
+  ["pickup", "drop"].forEach((k) => { sel[k] = null; $(k).value = ""; $("info-" + k).innerHTML = ""; $("conf-" + k).innerHTML = ""; });
+  $("cname").value = ""; $("cphone").value = "";
+  refresh();
+  toast(`Order ${esc(o.id)} placed <button onclick="goDispatch('${esc(o.id)}')">Open dispatch</button><button onclick="goTrack('${esc(o.id)}')">Track it</button>`);
 };
+window.goDispatch = (id) => { if (id) dSel = id; $("toast").classList.add("hide"); showTab("dispatch"); };
+window.goTrack = (id) => { if (id) tSel = id; $("toast").classList.add("hide"); showTab("track"); };
 
-function nearestRider(o) {
-  return RIDERS.map((r) => ({ ...r, d: haversine([r.lat, r.lng], o.pickup.coords) })).sort((a, b) => a.d - b.d)[0];
-}
+function ranked(o) { return RIDERS.map((r) => ({ ...r, d: haversine([r.lat, r.lng], o.pickup.coords) })).sort((a, b) => a.d - b.d); }
 function setStatus(id, status, rider) {
-  store.orders = store.orders.map((o) => o.id === id ? { ...o, status, rider: rider || o.rider } : o);
+  store.orders = store.orders.map((o) => o.id === id ? { ...o, status, rider: rider || o.rider, times: { ...T(o), [status]: Date.now() } } : o);
   renderDispatch(); renderTrack();
 }
-window.assign = (id) => { const o = store.orders.find((x) => x.id === id); const r = nearestRider(o); setStatus(id, "assigned", { name: r.name, km: r.d }); };
-window.advance = (id, s) => setStatus(id, s);
+window.assignOrder = (id) => { const o = store.orders.find((x) => x.id === id); if (!o) return; const r = ranked(o)[0]; setStatus(id, "assigned", { name: r.name, km: r.d }); };
+window.advanceOrder = (id, s) => setStatus(id, s);
 
-const STATUS_LABEL = { new: "New", assigned: "Rider assigned", picked_up: "On the way", delivered: "Delivered" };
-let riderLayer = L.layerGroup().addTo(map2), orderLayer = L.layerGroup().addTo(map2);
-function renderDispatch() {
-  const os = store.orders;
-  $("orders").innerHTML = os.length ? os.map((o) => `
-    <div class="ocard">
-      <div class="ohead"><b>${esc(o.id)}</b><span class="st ${o.status}">${STATUS_LABEL[o.status]}</span></div>
-      <div class="route-line">${esc(o.pickup.code)} to ${esc(o.drop.code)}</div>
-      <div class="meta">${esc(o.name)} · ${naira(o.fee)} · ${o.km.toFixed(1)} km${o.rider ? " · " + esc(o.rider.name) + ", " + o.rider.km.toFixed(1) + " km from pickup" : ""}</div>
-      ${o.status === "new" ? `<button class="btn primary small" onclick="assign('${o.id}')">Assign nearest rider</button>` :
-        o.status === "assigned" ? `<button class="btn soft small" onclick="advance('${o.id}','picked_up')">Mark picked up</button>` :
-        o.status === "picked_up" ? `<button class="btn soft small" onclick="advance('${o.id}','delivered')">Mark delivered</button>` : ""}
-    </div>`).join("")
-    : '<div class="empty-state">No orders yet. Place one from the Order tab.</div>';
-  $("riders").textContent = "Demo riders: " + RIDERS.map((r) => r.name).join(", ") + " (placed around Abuja)";
-  riderLayer.clearLayers(); orderLayer.clearLayers();
-  dispatchPoints = [];
-  RIDERS.forEach((r) => {
-    L.marker([r.lat, r.lng], { icon: L.divIcon({ className: "", html: `<div class="rider">🛵 ${esc(r.name)}</div>`, iconSize: [0, 0] }) }).addTo(riderLayer);
-    dispatchPoints.push([r.lat, r.lng]);
+function addSamples() {
+  const now = Date.now(), m = 60000;
+  const defs = [
+    ["Amara Foods",   "FC-01-A01-KP-27", "FC-01-A01-MH-01", "new", 3],
+    ["Kola Retail",   "FC-01-A01-LR-01", "FC-01-A01-KP-27", "new", 5],
+    ["Green Basket",  "FC-01-A01-MH-01", "FC-01-A01-LR-01", "assigned", 8],
+    ["Nora Pharmacy", "FC-01-A01-MV-01", "FC-01-A01-MW-01", "picked_up", 11],
+  ];
+  const added = [];
+  // oldest first, so order numbers rise with time; the list is shown newest first
+  defs.slice().reverse().forEach(([name, p, d, status, ago]) => {
+    const pickup = { code: p, coords: fallbackCoords(p), approx: true, where: "Public building, FCT" };
+    const drop = { code: d, coords: fallbackCoords(d), approx: true, where: "Public building, FCT" };
+    const km = haversine(pickup.coords, drop.coords), pr = price(km);
+    const created = now - ago * m;
+    const times = { new: created };
+    let rider = null;
+    const rk = ranked({ pickup })[status === "picked_up" ? 1 : 0];
+    if (status !== "new") { times.assigned = created + 2 * m; rider = { name: rk.name, km: rk.d }; }
+    if (status === "picked_up") times.picked_up = created + 6 * m;
+    const id = (() => { const all = [...store.orders, ...added]; const nums = all.map((o) => parseInt(String(o.id).replace(/\D/g, ""), 10)).filter((n) => !isNaN(n) && n >= 1000); return "BL-" + ((nums.length ? Math.max(...nums) : 1000) + 1); })();
+    added.push({ id, created, name: name, phone: "", pickup, drop, km, base: pr.base, distFee: pr.dist, fee: pr.total, status, rider, times, paid: false, sample: true });
   });
+  store.orders = [...added.reverse(), ...store.orders];
+  dSel = null; tSel = null;
+  renderDispatch(); renderTrack(); setTimeout(fitDispatch, 60);
+}
+window.addSamples = addSamples;
+window.clearAll = () => { if (confirm("Remove all orders from this demo workspace?")) { store.orders = []; dSel = null; tSel = null; renderDispatch(); renderTrack(); } };
+
+// ---------- dispatch ----------
+const STATUS = {
+  new: { t: "Awaiting rider", c: "st-new" }, assigned: { t: "Rider assigned", c: "st-assigned" },
+  picked_up: { t: "In transit", c: "st-transit" }, delivered: { t: "Delivered", c: "st-done" },
+};
+const chip = (s) => `<span class="st ${STATUS[s].c}">${STATUS[s].t}</span>`;
+let dSel = null, dTab = "all", dPts = [];
+const riderLayer = L.layerGroup().addTo(map2), orderLayer = L.layerGroup().addTo(map2);
+
+window.setTab = (t) => { dTab = t; renderDispatch(); };
+window.selectOrder = (id) => { dSel = id; renderDispatch(); setTimeout(fitDispatch, 30); if (window.innerWidth < 960) $("detail").scrollIntoView({ behavior: "smooth", block: "start" }); };
+$("q").addEventListener("input", () => renderDispatch());
+
+const byNewest = () => store.orders.slice().sort((a, b) => b.created - a.created);
+function renderDispatch() {
+  const os = byNewest();
+  const startDay = new Date(); startDay.setHours(0, 0, 0, 0);
+  const nNew = os.filter((o) => o.status === "new").length;
+  const nRoad = os.filter((o) => o.status === "assigned" || o.status === "picked_up").length;
+  const nDone = os.filter((o) => o.status === "delivered").length;
+  $("stats").innerHTML = [
+    ["Orders today", os.filter((o) => o.created >= startDay.getTime()).length, "Placed in this workspace", ""],
+    ["Awaiting rider", nNew, "Ready for assignment", "hot"],
+    ["On the road", nRoad, "Deliveries in progress", ""],
+    ["Delivered", nDone, "Completed so far", ""],
+  ].map(([l, n, s, c]) => `<div class="card stat"><small>${l}</small><div class="n">${String(n).padStart(2, "0")}</div><div class="s ${c}">${s}</div></div>`).join("");
+  $("activeCount").textContent = (nNew + nRoad) + " active";
+  $("dtabs").innerHTML = [["all", "All orders", os.length], ["await", "Awaiting rider", nNew], ["transit", "In transit", nRoad]]
+    .map(([k, l, n]) => `<button class="${dTab === k ? "on" : ""}" onclick="setTab('${k}')">${l} (${n})</button>`).join("");
+
+  const q = $("q").value.trim().toLowerCase();
+  const list = os.filter((o) => {
+    if (dTab === "await" && o.status !== "new") return false;
+    if (dTab === "transit" && o.status !== "assigned" && o.status !== "picked_up") return false;
+    if (!q) return true;
+    return [o.id, o.name, o.pickup.code, o.drop.code].join(" ").toLowerCase().includes(q);
+  });
+  if (!os.length) {
+    $("orderRows").innerHTML = `<div class="empty-state">No orders yet.<br><button class="btn primary" onclick="showTab('order')">New delivery</button><button class="btn soft" onclick="addSamples()">Add sample orders</button></div>`;
+  } else if (!list.length) {
+    $("orderRows").innerHTML = '<div class="empty-state">No orders match. Clear the search or pick another tab.</div>';
+  } else {
+    if (!list.find((o) => o.id === dSel)) dSel = list[0].id;
+    $("orderRows").innerHTML = list.map((o) => `
+      <div class="orow ${o.id === dSel ? "sel" : ""}" role="button" tabindex="0" onclick="selectOrder('${esc(o.id)}')" onkeydown="if(event.key==='Enter')selectOrder('${esc(o.id)}')">
+        <div class="c-id"><b>${esc(o.id)}</b><small>${hhmm(o.created)}</small></div>
+        <div class="c-del"><b>${esc(o.name)}${o.sample ? '<em class="tag">Sample</em>' : ""}</b><small>${esc(o.pickup.code)} → ${esc(o.drop.code)}</small></div>
+        <div class="c-st">${chip(o.status)}</div>
+        <div class="c-fee">${naira(o.fee)}</div><div class="c-go">›</div>
+      </div>`).join("");
+  }
+
+  const cur = os.find((o) => o.id === dSel);
+  $("detail").innerHTML = cur ? detailHTML(cur) : '<div class="empty-state">Select an order to see the nearest riders.</div>';
+
+  riderLayer.clearLayers(); orderLayer.clearLayers(); dPts = [];
+  RIDERS.forEach((r) => { L.marker([r.lat, r.lng], { icon: riderIcon(first(r.name)) }).addTo(riderLayer); dPts.push([r.lat, r.lng]); });
   os.filter((o) => o.status !== "delivered").forEach((o) => {
-    L.marker(o.pickup.coords, { icon: pinIcon("p") }).addTo(orderLayer).bindPopup(o.id + " pickup: " + o.pickup.code);
-    L.marker(o.drop.coords, { icon: pinIcon("d") }).addTo(orderLayer).bindPopup(o.id + " drop-off: " + o.drop.code);
-    L.polyline([o.pickup.coords, o.drop.coords], { color: "#0b5d3b", weight: 3, opacity: .7 }).addTo(orderLayer);
-    dispatchPoints.push(o.pickup.coords, o.drop.coords);
-    const rd = o.rider && RIDERS.find((r) => r.name === o.rider.name);
-    if (rd) L.polyline([[rd.lat, rd.lng], o.pickup.coords], { color: "#0e1a14", weight: 3, dashArray: "6 8" }).addTo(orderLayer);
+    const on = o.id === dSel;
+    L.marker(o.pickup.coords, { icon: pinIcon("a") }).addTo(orderLayer).bindPopup(esc(o.id) + " pickup: " + esc(o.pickup.code));
+    L.marker(o.drop.coords, { icon: pinIcon("b") }).addTo(orderLayer).bindPopup(esc(o.id) + " drop-off: " + esc(o.drop.code));
+    L.polyline([o.pickup.coords, o.drop.coords], { color: "#1d5a44", weight: on ? 4 : 2, opacity: on ? 1 : .5 }).addTo(orderLayer);
+    const rd = o.rider && (RIDERS.find((r) => r.name === o.rider.name) || RIDERS.find((r) => r.name.startsWith(o.rider.name)));
+    if (rd) L.polyline([[rd.lat, rd.lng], o.pickup.coords], { color: "#16221c", weight: 3, dashArray: "6 8" }).addTo(orderLayer);
+    if (on) dPts.push(o.pickup.coords, o.drop.coords);
   });
   if (!$("t-dispatch").classList.contains("hide")) fitDispatch();
 }
-let dispatchPoints = [];
-function fitDispatch() {
-  map2.invalidateSize();
-  if (dispatchPoints.length) map2.fitBounds(L.latLngBounds(dispatchPoints), { padding: [50, 50], maxZoom: 14 });
+function fitDispatch() { map2.invalidateSize(); if (dPts.length) map2.fitBounds(L.latLngBounds(dPts), { padding: [40, 40], maxZoom: 14 }); }
+
+function detailHTML(o) {
+  const rk = ranked(o);
+  const assigned = o.rider ? o.rider.name : null;
+  let btn = "";
+  if (o.status === "new") btn = `<button class="btn primary block" onclick="assignOrder('${esc(o.id)}')">Assign ${esc(first(rk[0].name))} &rarr;</button>`;
+  else if (o.status === "assigned") btn = `<button class="btn primary block" onclick="advanceOrder('${esc(o.id)}','picked_up')">Mark picked up &rarr;</button>`;
+  else if (o.status === "picked_up") btn = `<button class="btn primary block" onclick="advanceOrder('${esc(o.id)}','delivered')">Mark delivered &rarr;</button>`;
+  else btn = '<button class="btn primary block" disabled>Delivered</button>';
+  const rows = rk.map((r, i) => {
+    const pick = assigned ? r.name === assigned : i === 0;
+    return `<div class="rrow ${pick ? "pick" : ""}"><span class="rk">${i + 1}</span><div><b>${esc(r.name)}</b><small>${r.d.toFixed(1)} km away · about ${mins(r.d)} min to pickup</small></div>${pick ? `<span class="flag">${assigned ? "Assigned" : "Nearest"} ✓</span>` : ""}</div>`;
+  }).join("");
+  return `<div class="dhead"><h3>#${esc(o.id)}</h3>${chip(o.status)}</div>
+    <div class="dsub">${esc(o.pickup.code)} → ${esc(o.drop.code)}</div>
+    <div class="rl"><span>Nearest available riders</span><em>Auto-ranked</em></div>${rows}${btn}
+    <button class="btn ghost block" onclick="goTrack('${esc(o.id)}')">Open customer tracking</button>`;
 }
 
+// ---------- track ----------
+let tSel = null, tPts = [];
+const trackLayer = L.layerGroup().addTo(map3);
 const STEPS = ["new", "assigned", "picked_up", "delivered"];
-const STEP_LABEL = { new: "Order received", assigned: "Rider assigned", picked_up: "On the way", delivered: "Delivered" };
-function renderTrack() {
-  const os = store.orders; const box = $("trackBox");
-  if (!os.length) { box.innerHTML = '<div class="empty-state">No orders to track yet. Place one from the Order tab.</div>'; return; }
-  box.innerHTML = os.slice(0, 5).map((o) => {
-    const i = STEPS.indexOf(o.status);
-    // Estimates only: assumes an average rider speed of 25 km/h.
-    const mins = (km) => Math.max(2, Math.round(km / 25 * 60));
-    let banner = `<div class="banner wait">Waiting for a rider<small>Dispatch will assign the nearest one.</small></div>`;
-    if (o.status === "assigned") banner = `<div class="banner">${esc(o.rider.name)} is heading to pickup<small>About ${mins(o.rider.km)} min away (estimate)</small></div>`;
-    if (o.status === "picked_up") banner = `<div class="banner">On the way to you<small>About ${mins(o.km)} min to go (estimate)</small></div>`;
-    if (o.status === "delivered") banner = `<div class="banner">Delivered<small>Thanks for using Belora.</small></div>`;
-    return `<div class="tcard"><div class="ohead"><b>${esc(o.id)}</b><span class="meta" style="margin:0">${naira(o.fee)} · ${o.km.toFixed(1)} km</span></div>
-      ${banner}
-      <div class="twoline"><div><b>From</b><span>${esc(o.pickup.code)}</span></div><div><b>To</b><span>${esc(o.drop.code)}</span></div></div>
-      <ul class="steps">${STEPS.map((s, j) => `<li class="${j <= i ? "done" : ""}">${STEP_LABEL[s]}${s === "assigned" && o.rider && j <= i ? " · " + esc(o.rider.name) : ""}</li>`).join("")}</ul></div>`;
-  }).join("");
+function tLookup() {
+  const v = $("tnum").value.trim().toUpperCase().replace(/^#/, "");
+  const m = store.orders.find((o) => o.id.toUpperCase() === v || o.id.toUpperCase() === "BL-" + v);
+  if (m) { tSel = m.id; renderTrack(); setTimeout(fitTrack, 30); } else $("tmsg").textContent = "No order with that number in this workspace.";
 }
-// keep Dispatch and Track in sync when another tab changes an order
+$("tgo").onclick = tLookup;
+$("tnum").addEventListener("keydown", (e) => { if (e.key === "Enter") tLookup(); });
+
+function renderTrack() {
+  const os = byNewest();
+  $("trackEmpty").classList.toggle("hide", os.length > 0);
+  $("trackGrid").classList.toggle("hide", os.length === 0);
+  if (!os.length) return;
+  const o = os.find((x) => x.id === tSel) || os[0]; tSel = o.id;
+  $("tnum").value = o.id; $("tmsg").textContent = "";
+  const t = T(o), idx = STEPS.indexOf(o.status), rname = o.rider ? first(o.rider.name) : "";
+
+  // status banner
+  let chipTxt, big, small;
+  if (o.status === "new") { chipTxt = "Order placed"; big = "Waiting for a rider"; small = "Dispatch will assign the nearest rider."; }
+  else if (o.status === "assigned") { chipTxt = "Rider assigned"; big = `${esc(rname)} is heading to pickup`; small = `About ${mins(o.rider ? o.rider.km : 1)} min away (estimate)`; }
+  else if (o.status === "picked_up") {
+    const eta = (t.picked_up || Date.now()) + mins(o.km) * 60000, left = Math.max(0, Math.round((eta - Date.now()) / 60000));
+    chipTxt = "On the way"; big = left > 0 ? `Arriving in ${left} min` : "Arriving now"; small = `Estimated arrival · ${hhmm(eta)}`;
+  } else { chipTxt = "Delivered"; big = "Delivered"; small = t.delivered ? "Completed at " + hhmm(t.delivered) : ""; }
+  $("statusCard").innerHTML = `<span class="chipw">${chipTxt}</span><div class="big">${big}</div><div class="small">${esc(small)}</div>`;
+
+  // progress
+  const desc = {
+    new: "Your delivery is confirmed.",
+    assigned: o.rider ? `${esc(rname)} is heading to pickup.` : "A rider will be assigned shortly.",
+    picked_up: `Parcel collected from ${esc(o.pickup.code)}.`,
+    delivered: `Delivered to ${esc(o.drop.code)}.`,
+  };
+  const label = { new: "Order placed", assigned: "Rider assigned", picked_up: "Picked up, on the way", delivered: "Delivered" };
+  $("progressCard").innerHTML = `<h3 style="font-size:17px">Delivery progress</h3><ul class="steps">${STEPS.map((s, i) =>
+    `<li class="${i <= idx ? "done" : ""}"><div><b>${label[s]}</b><small>${i <= idx ? desc[s] : "We'll let you know when it happens."}</small></div><time>${i <= idx && t[s] ? hhmm(t[s]) : ""}</time></li>`).join("")}</ul>`;
+
+  // rider
+  $("riderCard").innerHTML = o.rider
+    ? `<div class="rider-card"><div class="avatar">${esc(o.rider.name.charAt(0))}</div><div><small>Your rider</small><b>${esc(o.rider.name)}</b><small>Motorcycle</small></div></div>`
+    : '<div class="rider-card"><div class="avatar">?</div><div><small>Your rider</small><b>Not assigned yet</b></div></div>';
+
+  // route card
+  $("routeCard").innerHTML = `<h3>Your delivery route</h3>
+    <div class="rcols"><div><small>A · Pickup</small><b>${esc(o.pickup.code)}</b><small>${esc(o.pickup.where || "")}</small></div>
+    <div><small>B · Drop-off</small><b>${esc(o.drop.code)}</b><small>${esc(o.drop.where || "")}</small></div></div>
+    <div class="rfoot"><span>${o.km.toFixed(1)} km total</span><span>Delivery fee <b>${naira(o.fee)}</b></span></div>`;
+  $("trackFoot").textContent = "Demo data · Illustrative tracking, rider location and postcode results · Order " + o.id;
+
+  // map
+  trackLayer.clearLayers(); tPts = [o.pickup.coords, o.drop.coords];
+  L.polyline([o.pickup.coords, o.drop.coords], { color: "#1d5a44", weight: 4 }).addTo(trackLayer);
+  L.marker(o.pickup.coords, { icon: pinIcon("a") }).addTo(trackLayer);
+  L.marker(o.drop.coords, { icon: pinIcon("b") }).addTo(trackLayer);
+  const rd = o.rider && (RIDERS.find((r) => r.name === o.rider.name) || RIDERS.find((r) => r.name.startsWith(o.rider.name)));
+  if (rd && o.status !== "new") {
+    let pos, lab;
+    if (o.status === "assigned") { pos = [rd.lat, rd.lng]; lab = rname + " is on the way to pickup"; L.polyline([pos, o.pickup.coords], { color: "#16221c", weight: 3, dashArray: "6 8" }).addTo(trackLayer); }
+    else if (o.status === "picked_up") { pos = [(o.pickup.coords[0] + o.drop.coords[0]) / 2, (o.pickup.coords[1] + o.drop.coords[1]) / 2]; lab = rname + " is on the way"; }
+    else { pos = o.drop.coords; lab = rname + " delivered"; }
+    L.marker(pos, { icon: riderIcon(lab) }).addTo(trackLayer); tPts.push(pos);
+  }
+  if (!$("t-track").classList.contains("hide")) fitTrack();
+}
+function fitTrack() { map3.invalidateSize(); if (tPts.length) map3.fitBounds(L.latLngBounds(tPts), { padding: [60, 60], maxZoom: 14 }); }
+
+// keep views in sync when another browser tab changes an order
 window.addEventListener("storage", () => { renderDispatch(); renderTrack(); });
-renderDispatch(); renderTrack();
+refresh(); renderDispatch(); renderTrack();
 </script>
 </body>
 </html>
