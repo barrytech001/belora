@@ -317,7 +317,7 @@
     <div class="stack">
       <div class="card mapcard short">
         <div id="map2" class="m"></div>
-        <div class="mapcap">A pickup · B drop-off · riders in dark · demo positions</div>
+        <div class="mapcap">A pickup · B drop-off · riders in dark · movement is simulated and sped up</div>
       </div>
       <div class="card" id="detail"></div>
     </div>
@@ -346,7 +346,7 @@
       </div>
       <div class="card mapcard">
         <div id="map3" class="m"></div>
-        <div class="mapcap">Illustrative route · Rider position is simulated</div>
+        <div class="mapcap">Illustrative route · Rider movement is simulated and sped up</div>
       </div>
       <div class="card rcard" id="routeCard"></div>
     </div>
@@ -372,6 +372,7 @@ const RIDERS = [ // demo riders, placed around the centre
   { id: "r3", name: "Tunde Bakare", lat: 9.0700, lng: 7.5120 },
 ];
 const BASE_FEE = 1000, PER_KM = 250, SPEED_KMH = 25;
+const SIM_MS = 20000; // demo only: each leg of the trip plays out in 20 seconds
 const DEMO_CODES = ["FC-01-A01-KP-27", "FC-01-A01-LR-01", "FC-01-A01-MH-01"];
 
 const store = {
@@ -585,8 +586,31 @@ window.goDispatch = (id) => { if (id) dSel = id; $("toast").classList.add("hide"
 window.goTrack = (id) => { if (id) tSel = id; $("toast").classList.add("hide"); showTab("track"); };
 
 function ranked(o) { return RIDERS.map((r) => ({ ...r, d: haversine([r.lat, r.lng], o.pickup.coords) })).sort((a, b) => a.d - b.d); }
+// Simulated rider movement: position is worked out from the time since the last status change.
+const lerp = (a, b, p) => [a[0] + (b[0] - a[0]) * p, a[1] + (b[1] - a[1]) * p];
+const riderOf = (o) => o.rider && (RIDERS.find((r) => r.name === o.rider.name) || RIDERS.find((r) => r.name.startsWith(o.rider.name)));
+function riderPos(o) {
+  const rd = riderOf(o); if (!rd) return null;
+  const since = Math.max(0, Date.now() - (o.sim || T(o)[o.status] || Date.now()));
+  const p = Math.min(1, since / SIM_MS);
+  if (o.status === "assigned") return { pos: lerp([rd.lat, rd.lng], o.pickup.coords, p), p, text: p >= 1 ? "at pickup" : "heading to pickup" };
+  if (o.status === "picked_up") return { pos: lerp(o.pickup.coords, o.drop.coords, p), p, text: p >= 1 ? "at drop-off" : "on the way" };
+  if (o.status === "delivered") return { pos: o.drop.coords, p: 1, text: "delivered" };
+  return null;
+}
+function stepMarker(m) {
+  const rp = riderPos(m.o); if (!rp) return;
+  m.marker.setLatLng(rp.pos);
+  if (rp.text !== m.text) { m.text = rp.text; m.marker.setIcon(riderIcon(first(m.o.rider.name) + " · " + rp.text)); }
+}
+let moving = {}, trackMove = null;
+setInterval(() => {
+  if (!$("t-dispatch").classList.contains("hide")) Object.values(moving).forEach(stepMarker);
+  if (!$("t-track").classList.contains("hide") && trackMove) stepMarker(trackMove);
+}, 150);
+
 function setStatus(id, status, rider) {
-  store.orders = store.orders.map((o) => o.id === id ? { ...o, status, rider: rider || o.rider, times: { ...T(o), [status]: Date.now() } } : o);
+  store.orders = store.orders.map((o) => o.id === id ? { ...o, status, rider: rider || o.rider, sim: Date.now(), times: { ...T(o), [status]: Date.now() } } : o);
   renderDispatch(); renderTrack();
 }
 window.assignOrder = (id) => { const o = store.orders.find((x) => x.id === id); if (!o) return; const r = ranked(o)[0]; setStatus(id, "assigned", { name: r.name, km: r.d }); };
@@ -613,7 +637,7 @@ function addSamples() {
     if (status !== "new") { times.assigned = created + 2 * m; rider = { name: rk.name, km: rk.d }; }
     if (status === "picked_up") times.picked_up = created + 6 * m;
     const id = (() => { const all = [...store.orders, ...added]; const nums = all.map((o) => parseInt(String(o.id).replace(/\D/g, ""), 10)).filter((n) => !isNaN(n) && n >= 1000); return "BL-" + ((nums.length ? Math.max(...nums) : 1000) + 1); })();
-    added.push({ id, created, name: name, phone: "", pickup, drop, km, base: pr.base, distFee: pr.dist, fee: pr.total, status, rider, times, paid: false, sample: true });
+    added.push({ id, created, name: name, phone: "", pickup, drop, km, base: pr.base, distFee: pr.dist, fee: pr.total, status, rider, times, sim: now, paid: false, sample: true });
   });
   store.orders = [...added.reverse(), ...store.orders];
   dSel = null; tSel = null;
@@ -677,15 +701,19 @@ function renderDispatch() {
   const cur = os.find((o) => o.id === dSel);
   $("detail").innerHTML = cur ? detailHTML(cur) : '<div class="empty-state">Select an order to see the nearest riders.</div>';
 
-  riderLayer.clearLayers(); orderLayer.clearLayers(); dPts = [];
-  RIDERS.forEach((r) => { L.marker([r.lat, r.lng], { icon: riderIcon(first(r.name)) }).addTo(riderLayer); dPts.push([r.lat, r.lng]); });
+  riderLayer.clearLayers(); orderLayer.clearLayers(); dPts = []; moving = {};
+  // riders on an active job are drawn moving; the rest wait at their demo positions
+  const busy = new Set(os.filter((o) => (o.status === "assigned" || o.status === "picked_up") && o.rider).map((o) => o.rider.name));
+  RIDERS.forEach((r) => { if (!busy.has(r.name)) L.marker([r.lat, r.lng], { icon: riderIcon(first(r.name)) }).addTo(riderLayer); dPts.push([r.lat, r.lng]); });
   os.filter((o) => o.status !== "delivered").forEach((o) => {
     const on = o.id === dSel;
     L.marker(o.pickup.coords, { icon: pinIcon("a") }).addTo(orderLayer).bindPopup(esc(o.id) + " pickup: " + esc(o.pickup.code));
     L.marker(o.drop.coords, { icon: pinIcon("b") }).addTo(orderLayer).bindPopup(esc(o.id) + " drop-off: " + esc(o.drop.code));
     L.polyline([o.pickup.coords, o.drop.coords], { color: "#1d5a44", weight: on ? 4 : 2, opacity: on ? 1 : .5 }).addTo(orderLayer);
-    const rd = o.rider && (RIDERS.find((r) => r.name === o.rider.name) || RIDERS.find((r) => r.name.startsWith(o.rider.name)));
-    if (rd) L.polyline([[rd.lat, rd.lng], o.pickup.coords], { color: "#16221c", weight: 3, dashArray: "6 8" }).addTo(orderLayer);
+    const rd = riderOf(o);
+    if (rd && o.status === "assigned") L.polyline([[rd.lat, rd.lng], o.pickup.coords], { color: "#16221c", weight: 3, dashArray: "6 8" }).addTo(orderLayer);
+    const rp = riderPos(o);
+    if (rp) { const mv = L.marker(rp.pos, { icon: riderIcon(first(o.rider.name) + " · " + rp.text), zIndexOffset: 500 }).addTo(riderLayer); moving[o.id] = { o, marker: mv, text: rp.text }; }
     if (on) dPts.push(o.pickup.coords, o.drop.coords);
   });
   if (!$("t-dispatch").classList.contains("hide")) fitDispatch();
@@ -769,13 +797,12 @@ function renderTrack() {
   L.polyline([o.pickup.coords, o.drop.coords], { color: "#1d5a44", weight: 4 }).addTo(trackLayer);
   L.marker(o.pickup.coords, { icon: pinIcon("a") }).addTo(trackLayer);
   L.marker(o.drop.coords, { icon: pinIcon("b") }).addTo(trackLayer);
-  const rd = o.rider && (RIDERS.find((r) => r.name === o.rider.name) || RIDERS.find((r) => r.name.startsWith(o.rider.name)));
-  if (rd && o.status !== "new") {
-    let pos, lab;
-    if (o.status === "assigned") { pos = [rd.lat, rd.lng]; lab = rname + " is on the way to pickup"; L.polyline([pos, o.pickup.coords], { color: "#16221c", weight: 3, dashArray: "6 8" }).addTo(trackLayer); }
-    else if (o.status === "picked_up") { pos = [(o.pickup.coords[0] + o.drop.coords[0]) / 2, (o.pickup.coords[1] + o.drop.coords[1]) / 2]; lab = rname + " is on the way"; }
-    else { pos = o.drop.coords; lab = rname + " delivered"; }
-    L.marker(pos, { icon: riderIcon(lab) }).addTo(trackLayer); tPts.push(pos);
+  trackMove = null;
+  const rp = riderPos(o), rd = riderOf(o);
+  if (rp && rd) {
+    if (o.status === "assigned") { L.polyline([[rd.lat, rd.lng], o.pickup.coords], { color: "#16221c", weight: 3, dashArray: "6 8" }).addTo(trackLayer); tPts.push([rd.lat, rd.lng]); }
+    const mv = L.marker(rp.pos, { icon: riderIcon(rname + " · " + rp.text), zIndexOffset: 500 }).addTo(trackLayer);
+    trackMove = { o, marker: mv, text: rp.text }; tPts.push(rp.pos);
   }
   if (!$("t-track").classList.contains("hide")) fitTrack();
 }
